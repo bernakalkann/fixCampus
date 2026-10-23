@@ -54,6 +54,15 @@ fixCampus; üniversite öğrencilerinin kampüs içinde sosyal buluşmalar organ
 
 ---
 
+### 3. Veri Modeli (Berna Kalkan)
+- Altı model sınıfı: Profil, Kategori, Ilan, Katilim, IlanFotografi ve Sikayet.
+- EF Core DbContext ile tablo ilişkileri, alan uzunlukları ve veri kısıtları.
+- Tekrar katılımı ve ilan başına birden fazla fotoğrafı önleyen benzersiz indeksler.
+
+Ayrıntılar: [Hafta 1 veri modeli](docs/hafta-01-veri-modeli.md).
+
+---
+
 ## 💻 Projeyi Çalıştırma
 
 Depo kökünde PowerShell ile:
