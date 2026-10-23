@@ -1,6 +1,6 @@
 # Zülfikar için görev ve commit planı
 
-Bu plan, `Kampus_Ilan_Platformu_Plan_Belgesi_Taslak (1)-4.docx` içindeki 9 haftalık dağılımı esas alır. Her satır ileride gerçekten geliştirilecek bir işi gösterir; tamamlanmış çalışma kaydı değildir. Bugünkü kapsam yalnız API iskeletidir.
+Bu plan, `Kampus_Ilan_Platformu_Plan_Belgesi_Taslak (1)-4.docx` içindeki 9 haftalık dağılımı esas alır. Tablo çalışma sırasını gösterir; gerçekleşen sonuçlar ayrıca kaydedilir. 23 Ekim 2026 kapsamı, 1. haftadaki API iskeleti, örnek yanıt ve entegrasyon belgesidir. Sonraki haftaların uygulama kodu eklenmemiştir.
 
 ## Her oturumun düzeni
 
@@ -18,7 +18,7 @@ Aşağıdaki commit mesajları öneridir; yalnız ilgili iş tamamlandığında 
 
 | Hafta | Sende olan görev | Sırayla geliştirilecek küçük dilimler | Kontrol edilecek sonuç |
 |---|---|---|---|
-| 1 | API iskeleti | `feat: API iskeletini ve durum endpointini ekle` → `feat: web ve mobil icin ornek ilan yanitini ekle` → `docs: API entegrasyon adimlarini acikla` | Swagger açılır; durum yanıtı alınır; sonraki dilimde örnek veri açıkça örnek olarak sunulur. |
+| 1 | API iskeleti | `feat: API iskeletini ve durum endpointini ekle` → `feat: web ve mobil icin ornek ilan yanitini ekle` → `docs: API entegrasyon adimlarini acikla` | Swagger açılır; durum yanıtı alınır; örnek endpoint üç sabit ilanı `dataSource=sample` ve `isPersisted=false` ile sunar. |
 | 2 | Rol kontrolü | `feat: dogrulanmis oturumdan kullanici kimligini al` → `feat: ogrenci ve yonetici politikalarini ekle` → `test: yetkisiz erisim senaryolarini dogrula` | Oturumsuz istek 401; öğrencinin yönetim isteği 403; yönetici yetkili işlemi yapabilir. |
 | 3 | Doğrulama | `feat: ilan isteklerine alan dogrulama ekle` → `feat: kategori ve tarih kurallarini dogrula` → `test: ilan dogrulama hatalarini denetle` | Geçersiz başlık, kategori ve tarih kaydedilmez; alan hataları anlaşılır döner. |
 | 4 | İlanlarım | `feat: ilanlarim sorgusunu kullaniciya gore filtrele` → `feat: ilanlarim ekranini bagla` → `test: iki hesapla ilanlarim erisimini dogrula` | Her hesap kendi ilanlarını görür; kullanıcı kimliği formdan alınmaz. |
@@ -29,6 +29,8 @@ Aşağıdaki commit mesajları öneridir; yalnız ilgili iş tamamlandığında 
 | 9 | API kontrolü | `docs: Swagger gosterim senaryolarini ekle` → bulunan her hata için ayrı `fix: ...` → `docs: API son kontrol sonucunu kaydet` | Öğrenci, yönetici ve iki hesap senaryoları denenir; başka bilgisayarda kurulum birlikte kontrol edilir. |
 
 ## Ekipteki sınırlar
+
+İlk haftanın API dilimlerinin kapsamı ve gerçek kontrol durumu [çalışma notunda](hafta-01-api-calisma-notu.md), yanıt biçimi [entegrasyon belgesinde](api-entegrasyonu.md) bulunur. Örnek yanıt, veri modeli ve gerçek CRUD yerine geçmez.
 
 - **Berna:** veri modeli, Auth/profil, CRUD ve sorgular, katılım ve yönetim API'si. Sen mevcut işlere rol, doğrulama ve ilgili kuralları eklersin; paralel üyelik veya CRUD sistemi kurmazsın.
 - **Berke:** web iskeleti, giriş/ilan/arama formları, buluşma formu ve yönetici paneli. İlanlarım ve bildirim formu için ortak tasarım ve endpointler üzerinde anlaşılır.
