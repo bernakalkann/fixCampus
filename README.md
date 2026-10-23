@@ -92,3 +92,15 @@ PowerShell ile hızlı kontrol:
 Invoke-RestMethod http://localhost:5168/api/durum
 Invoke-RestMethod http://localhost:5168/api/ornek/ilanlar
 ```
+
+## Supabase bağlantısı ve tek ilan demosu
+
+İlk migration, gizli bağlantı ayarı ve veritabanından okunan örnek ilan eklendi.
+Kurulum komutları: [Supabase ilk migration ve demo](docs/supabase-ilk-migration-demo.md).
+
+Demo sayfası: http://localhost:5168/veritabani-ornek
+
+API: GET /api/veritabani/ornek-ilan (Development). Mevcut sabit örnek API değişmedi.
+
+Canlı Supabase kurulumu için bağlantı ayarlarını yerelde tanımlayıp migration ve
+demo komutlarını çalıştırmak gerekir; bu ortamda derleme/canlı bağlantı doğrulanmadı.
