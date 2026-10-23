@@ -1,6 +1,6 @@
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
+builder.Services.AddControllersWithViews();
 builder.Services.AddOpenApi();
 builder.Services.AddSingleton(TimeProvider.System);
 
@@ -13,9 +13,8 @@ if (app.Environment.IsDevelopment())
     {
         options.SwaggerEndpoint("/openapi/v1.json", "fixCampus API v1");
         options.DocumentTitle = "fixCampus API";
+        options.RoutePrefix = "swagger";
     });
-    app.MapGet("/", () => Results.Redirect("/swagger"))
-        .ExcludeFromDescription();
 }
 else
 {
@@ -23,5 +22,14 @@ else
     app.UseHttpsRedirection();
 }
 
+app.UseStaticFiles();
+app.UseRouting();
+app.UseAuthorization();
+
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=Home}/{action=Index}/{id?}");
+
 app.MapControllers();
+
 app.Run();
