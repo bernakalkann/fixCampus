@@ -1,0 +1,220 @@
+@{
+    ViewData["Title"] = "Proje Planı ve Çalışma Takvimi";
+}
+
+<div class="container py-4">
+    <div class="p-4 p-md-5 mb-4 rounded-4 bg-white border shadow-sm">
+        <div class="d-flex align-items-center gap-2 mb-2">
+            <span class="badge bg-primary px-3 py-2 rounded-pill">BLM4581 Ağ Tabanlı Teknolojiler ve Uygulamaları</span>
+            <span class="text-muted small">&bull; 2026–2027 Güz Yarıyılı</span>
+        </div>
+        <h1 class="display-6 fw-bold text-dark mb-2">fixCampus &bull; Dönem Projesi Planı</h1>
+        <p class="lead text-muted mb-4">
+            Üniversite öğrencilerinin sosyal buluşma ve kayıp-buluntu ilanlarını paylaşabileceği kampüs portalı geliştirme takvimi ve liderlik dağılımı.
+        </p>
+        
+        <div class="row g-3">
+            <div class="col-md-4">
+                <div class="p-3 rounded-3 bg-light border">
+                    <span class="text-muted small d-block">Grup Adı</span>
+                    <strong class="text-dark fs-5">fixCampus</strong>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="p-3 rounded-3 bg-light border">
+                    <span class="text-muted small d-block">Grup Türü</span>
+                    <strong class="text-dark fs-5">3 Kişilik Takım</strong>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="p-3 rounded-3 bg-light border">
+                    <span class="text-muted small d-block">Mimari</span>
+                    <strong class="text-dark fs-5">ASP.NET Core MVC + API</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Grup Üyeleri Tablosu -->
+    <div class="card border rounded-4 shadow-sm mb-4 bg-white overflow-hidden">
+        <div class="card-header bg-white py-3 border-bottom">
+            <h5 class="fw-bold text-dark mb-0"><i class="bi bi-people-fill text-primary me-2"></i> Grup Üyeleri</h5>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Ad Soyad</th>
+                        <th>Öğrenci No</th>
+                        <th>GitHub Kullanıcı Adı</th>
+                        <th>Liderlik Haftaları</th>
+                        <th>Öne Çıkan Görevler</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Berna Kalkan</strong></td>
+                        <td>22290948</td>
+                        <td><a href="https://github.com/bernakalkann" target="_blank" class="text-decoration-none">bernakalkann</a></td>
+                        <td><span class="badge bg-info text-dark">7, 8 ve 9. Haftalar</span></td>
+                        <td>Veri modeli, Supabase Auth/Profil, CRUD API, Sorgular, Katılım API, Yönetim API</td>
+                    </tr>
+                    <tr class="table-primary-subtle">
+                        <td><strong>Berke Mahmut Acar</strong> <span class="badge bg-primary ms-1">Mevcut Çalışma</span></td>
+                        <td>22290455</td>
+                        <td><a href="https://github.com/berke1227" target="_blank" class="text-decoration-none">berke1227</a></td>
+                        <td><span class="badge bg-warning text-dark">4, 5 ve 6. Haftalar</span></td>
+                        <td><strong>Web İskeleti</strong>, Giriş Formları, İlan Sayfaları, Arama Ekranı, Buluşma Formu, Panel Ekranı, Mobil Uyum</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Zülfikar Durak</strong></td>
+                        <td>22290590</td>
+                        <td><a href="https://github.com/zulficon" target="_blank" class="text-decoration-none">zulficon</a></td>
+                        <td><span class="badge bg-success">1, 2 ve 3. Haftalar</span></td>
+                        <td>API İskeleti, Rol Kontrolü, Doğrulama Kuralları, İlanlarım, Süre Kuralı, Fotoğraf API, Bildirim Formu</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 9 Haftalık Plan -->
+    <div class="card border rounded-4 shadow-sm mb-4 bg-white overflow-hidden">
+        <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+            <h5 class="fw-bold text-dark mb-0"><i class="bi bi-calendar3 text-primary me-2"></i> 9 Haftalık Geliştirme Takvimi</h5>
+            <span class="badge bg-success-subtle text-success border px-3 py-1">Çalışma Dönemi: 21 Ekim - 23 Aralık 2026</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 70px;">Hafta</th>
+                        <th style="width: 150px;">Lider</th>
+                        <th>Yapılacak İşler</th>
+                        <th style="width: 280px;">Sorumlu Üye(ler)</th>
+                        <th style="width: 110px;">Durum</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="table-success">
+                        <td class="text-center fw-bold">1</td>
+                        <td>Zülfikar Durak</td>
+                        <td>
+                            Proje kapsamı ve ekran akışlarını belirleme. MVC/API iskeleti, ortak veritabanı bağlantısı ve ilk migration dosyalarını hazırlama. GitHub deposu ve Drive klasörü.
+                        </td>
+                        <td>
+                            <div><span class="badge bg-secondary">Berna:</span> Veri modeli</div>
+                            <div><span class="badge bg-primary">Berke:</span> Web iskeleti (Tamamlandı)</div>
+                            <div><span class="badge bg-secondary">Zülfikar:</span> API iskeleti</div>
+                        </td>
+                        <td><span class="badge bg-success">Aktif / Tamamlanıyor</span></td>
+                    </tr>
+                    <tr>
+                        <td class="text-center fw-bold">2</td>
+                        <td>Zülfikar Durak</td>
+                        <td>
+                            Kayıt, giriş, çıkış ve profil işlemlerini geliştirme. Öğrenci ve yönetici rollerini tanımlayıp yetki kontrollerini ekleme.
+                        </td>
+                        <td>
+                            <div><span class="badge bg-secondary">Berna:</span> Auth ve profil</div>
+                            <div><span class="badge bg-primary">Berke:</span> Giriş formları</div>
+                            <div><span class="badge bg-secondary">Zülfikar:</span> Rol kontrolü</div>
+                        </td>
+                        <td><span class="badge bg-light text-dark border">Planlandı</span></td>
+                    </tr>
+                    <tr>
+                        <td class="text-center fw-bold">3</td>
+                        <td>Zülfikar Durak</td>
+                        <td>
+                            İlanlar için tam CRUD API ve Swagger ekranı. Webde ilan oluşturma, listeleme, detay, düzenleme ve silme akışları; alan doğrulama ve sahiplik kontrolleri.
+                        </td>
+                        <td>
+                            <div><span class="badge bg-secondary">Berna:</span> CRUD API</div>
+                            <div><span class="badge bg-primary">Berke:</span> İlan sayfaları</div>
+                            <div><span class="badge bg-secondary">Zülfikar:</span> Doğrulama</div>
+                        </td>
+                        <td><span class="badge bg-light text-dark border">Planlandı</span></td>
+                    </tr>
+                    <tr>
+                        <td class="text-center fw-bold">4</td>
+                        <td>Berke Mahmut Acar</td>
+                        <td>
+                            Kategori, metin arama, sayfalama ve İlanlarım ekranı. Giriş ve ilan işlemlerini iki hesapla deneyip ilk gösterim için çalışan sürümü hazırlama.
+                        </td>
+                        <td>
+                            <div><span class="badge bg-secondary">Berna:</span> Sorgular</div>
+                            <div><span class="badge bg-primary">Berke:</span> Arama ekranı</div>
+                            <div><span class="badge bg-secondary">Zülfikar:</span> İlanlarım</div>
+                        </td>
+                        <td><span class="badge bg-light text-dark border">Planlandı</span></td>
+                    </tr>
+                    <tr>
+                        <td class="text-center fw-bold">5</td>
+                        <td>Berke Mahmut Acar</td>
+                        <td>
+                            Buluşmalara yer, tarih ve saat ekleme. Geliyorum ve katılımı geri alma işlemleri; aynı kullanıcının tekrar katılmasını önleme ve süresi biten ilanları gizleme.
+                        </td>
+                        <td>
+                            <div><span class="badge bg-secondary">Berna:</span> Katılım API</div>
+                            <div><span class="badge bg-primary">Berke:</span> Buluşma formu</div>
+                            <div><span class="badge bg-secondary">Zülfikar:</span> Süre kuralı</div>
+                        </td>
+                        <td><span class="badge bg-light text-dark border">Planlandı</span></td>
+                    </tr>
+                    <tr>
+                        <td class="text-center fw-bold">6</td>
+                        <td>Berke Mahmut Acar</td>
+                        <td>
+                            Kayıp-buluntu etiketleri ve çözüldü durumu. İsteğe bağlı tek fotoğrafı Storage üzerinde saklama; dosya türü, boyutu ve erişim kontrolleri.
+                        </td>
+                        <td>
+                            <div><span class="badge bg-secondary">Berna:</span> Veri ve durum</div>
+                            <div><span class="badge bg-primary">Berke:</span> İlan formu</div>
+                            <div><span class="badge bg-secondary">Zülfikar:</span> Fotoğraf API</div>
+                        </td>
+                        <td><span class="badge bg-light text-dark border">Planlandı</span></td>
+                    </tr>
+                    <tr>
+                        <td class="text-center fw-bold">7</td>
+                        <td>Berna Kalkan</td>
+                        <td>
+                            Yönetici panelinde kategori düzenleme ve bildirilen ilanları inceleme işlemleri. Uygunsuz ilanı gizleme ve yalnızca yetkili kullanıcının yönetim yapması.
+                        </td>
+                        <td>
+                            <div><span class="badge bg-secondary">Berna:</span> Yönetim API</div>
+                            <div><span class="badge bg-primary">Berke:</span> Panel ekranı</div>
+                            <div><span class="badge bg-secondary">Zülfikar:</span> Bildirim formu</div>
+                        </td>
+                        <td><span class="badge bg-light text-dark border">Planlandı</span></td>
+                    </tr>
+                    <tr>
+                        <td class="text-center fw-bold">8</td>
+                        <td>Berna Kalkan</td>
+                        <td>
+                            Mobil ekran uyumu ve bütün kullanım akışlarının kontrolü. API, yetki ve form hatalarını düzeltme; kurulum, migration ve yapılandırma adımlarını README dosyasına yazma.
+                        </td>
+                        <td>
+                            <div><span class="badge bg-secondary">Berna:</span> API düzeltme</div>
+                            <div><span class="badge bg-primary">Berke:</span> Mobil uyum</div>
+                            <div><span class="badge bg-secondary">Zülfikar:</span> Hata akışları</div>
+                        </td>
+                        <td><span class="badge bg-light text-dark border">Planlandı</span></td>
+                    </tr>
+                    <tr>
+                        <td class="text-center fw-bold">9</td>
+                        <td>Berna Kalkan</td>
+                        <td>
+                            Son hataları düzeltme, projeyi farklı bilgisayarda kurup çalıştırma. Örnek hesap ve ilanlar; Swagger, öğrenci ve yönetici işlemleriyle final gösterim provası.
+                        </td>
+                        <td>
+                            <div><span class="badge bg-secondary">Berna:</span> Veri ve kurulum</div>
+                            <div><span class="badge bg-primary">Berke:</span> Web kontrolü</div>
+                            <div><span class="badge bg-secondary">Zülfikar:</span> API kontrolü</div>
+                        </td>
+                        <td><span class="badge bg-light text-dark border">Planlandı</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
