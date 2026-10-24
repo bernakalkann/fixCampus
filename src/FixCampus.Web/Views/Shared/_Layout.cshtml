@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - fixCampus</title>
+    
+    <!-- Google Fonts & Bootstrap Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    
+    <!-- Bootstrap 5 & Site CSS -->
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <!-- Ana Navigasyon Çubuğu -->
+    <header class="fc-navbar">
+        <nav class="navbar navbar-expand-lg navbar-light py-3">
+            <div class="container">
+                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">
+                    <span>fix<span class="text-dark fw-bolder">Campus</span></span>
+                </a>
+                
+                <button class="navbar-toggler border-0 shadow-none" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent" 
+                        aria-controls="navbarContent" aria-expanded="false" aria-label="Menüyü Aç/Kapat">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                
+                <div class="collapse navbar-collapse" id="navbarContent">
+                    <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-3">
+                        <li class="nav-item">
+                            <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "Index" && ViewContext.RouteData.Values["Controller"]?.ToString() == "Home" ? "active" : "")" 
+                               asp-area="" asp-controller="Home" asp-action="Index">
+                                Ana Sayfa
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "Radar" ? "active" : "")" 
+                               asp-area="" asp-controller="Home" asp-action="Radar">
+                                Sosyal Radar
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "LostFound" ? "active" : "")" 
+                               asp-area="" asp-controller="Home" asp-action="LostFound">
+                                Kayıp & Buluntu
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "Ads" ? "active" : "")" 
+                               asp-area="" asp-controller="Home" asp-action="Ads">
+                                Tüm İlanlar
+                            </a>
+                        </li>
+                    </ul>
+                    
+                    <!-- Filtreleme ve Arama Çubuğu -->
+                    <form asp-controller="Home" asp-action="Ads" method="get" class="fc-nav-filter my-2 my-lg-0 me-lg-3">
+                        <div class="input-group input-group-sm">
+                            <select name="type" class="form-select form-select-sm" style="max-width: 135px; font-size: 0.82rem; font-weight: 500;">
+                                <option value="">Tüm İlanlar</option>
+                                <option value="radar" selected="@(Context.Request.Query["type"] == "radar")">Sosyal Radar</option>
+                                <option value="lost" selected="@(Context.Request.Query["type"] == "lost")">Kayıp Eşya</option>
+                                <option value="found" selected="@(Context.Request.Query["type"] == "found")">Buluntu Eşya</option>
+                            </select>
+                            <input type="text" name="search" value="@Context.Request.Query["search"]" class="form-control form-control-sm" placeholder="İlanlarda ara..." style="min-width: 140px; max-width: 200px; font-size: 0.82rem;" />
+                            <button class="btn btn-sm" type="submit" title="Filtrele">
+                                <i class="bi bi-search"></i>
+                            </button>
+                        </div>
+                    </form>
+
+                    <div class="d-flex align-items-center gap-2">
+                        <a href="javascript:void(0)" class="btn btn-dark btn-sm px-3">
+                            İlan Ver
+                        </a>
+                        <a href="javascript:void(0)" class="btn btn-outline-dark btn-sm px-3">
+                            Giriş Yap
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Ana İçerik -->
+    <main role="main">
+        @RenderBody()
+    </main>
+
+    <!-- Alt Bilgi (Footer) - Sadeleştirilmiş, İletişim ve Gizlilik kaldırıldı -->
+    <footer class="fc-footer">
+        <div class="container">
+            <div class="row g-4 justify-content-between align-items-center">
+                <div class="col-md-7">
+                    <h5 class="fw-bold mb-2 text-dark">fixCampus</h5>
+                    <p class="text-muted small mb-0 pe-lg-4">
+                        Üniversite öğrencilerinin sosyal buluşma organize edebileceği, kampüsteki kayıp-buluntu eşyalarını tek noktadan takip edebileceği kampüs ilan portalı.
+                    </p>
+                </div>
+                
+                <div class="col-md-5 text-md-end">
+                    <div class="d-flex flex-wrap gap-3 justify-content-md-end small">
+                        <a asp-controller="Home" asp-action="Index" class="text-muted text-decoration-none">Ana Sayfa</a>
+                        <a asp-controller="Home" asp-action="Radar" class="text-muted text-decoration-none">Sosyal Radar</a>
+                        <a asp-controller="Home" asp-action="LostFound" class="text-muted text-decoration-none">Kayıp & Buluntu</a>
+                        <a asp-controller="Home" asp-action="Ads" class="text-muted text-decoration-none">Tüm İlanlar</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="fc-footer-bottom text-center text-muted small mt-4 pt-3 border-top">
+                &copy; 2026 fixCampus &bull; Tüm Hakları Saklıdır.
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scriptler -->
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

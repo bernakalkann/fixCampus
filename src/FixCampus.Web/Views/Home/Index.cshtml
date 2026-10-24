@@ -1,0 +1,148 @@
+@{
+    ViewData["Title"] = "Ana Sayfa";
+}
+
+<div class="container py-4">
+    <!-- Proje Başlığı ve Genel Tanıtım -->
+    <div class="p-4 p-md-5 mb-4 rounded-4 bg-white border shadow-sm">
+        <h1 class="display-6 fw-bold text-dark mb-3">fixCampus &bull; Kampüs İlan Platformu</h1>
+        <p class="lead text-secondary mb-3">
+            Bu projede üniversite öğrencilerinin <strong>sosyal buluşma</strong> ve <strong>kayıp-buluntu</strong> ilanlarını paylaşabileceği ortak bir kampüs portalı geliştirilmektedir. Hedef kullanıcılar kampüste birlikte etkinlik yapmak isteyen veya kaybettiği eşyayı arayan öğrencilerdir.
+        </p>
+        <p class="text-muted mb-4 small">
+            Kullanıcılar hesap oluşturup giriş yapabilecek, profilini düzenleyebilecek ve kendi ilanlarını yönetebilecektir.
+        </p>
+        
+        <div class="d-flex flex-wrap gap-2">
+            <a asp-controller="Home" asp-action="Radar" class="btn btn-outline-dark btn-sm px-3 fw-semibold">
+                Sosyal Radar Sayfası
+            </a>
+            <a asp-controller="Home" asp-action="LostFound" class="btn btn-outline-dark btn-sm px-3 fw-semibold">
+                Kayıp & Buluntu Sayfası
+            </a>
+            <a asp-controller="Home" asp-action="Ads" class="btn btn-outline-dark btn-sm px-3 fw-semibold">
+                İlan Listesi & Arama
+            </a>
+        </div>
+    </div>
+
+    <!-- Planlanan Sayfalar ve Ekran Akışları -->
+    <div class="mb-4">
+        <div class="mb-3">
+            <h3 class="fw-bold text-dark mb-1">Planlanan Sayfalar ve Ekran Akışları</h3>
+            <p class="text-muted small mb-0">Platformda yer alan temel modüllerin ve sayfaların görev tanımları</p>
+        </div>
+
+        <div class="row g-4">
+            <!-- Sayfa 1: Sosyal Radar -->
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border rounded-4 p-4 shadow-sm bg-white">
+                    <span class="badge bg-light text-dark border align-self-start mb-3">Buluşma Modülü</span>
+                    <h5 class="fw-bold text-dark mb-2">Sosyal Radar (Buluşmalar)</h5>
+                    <p class="text-muted small mb-3">
+                        Öğrencilerin buluşma yeri, tarih ve saat bilgisiyle ilan açabileceği alandır. Diğer öğrenciler <em>"Geliyorum"</em> seçeneğiyle katılabilecek veya katılımını geri alabilecektir.
+                    </p>
+                    <div class="bg-light p-3 rounded-3 small mb-3">
+                        <strong class="text-dark">Temel Kurallar:</strong>
+                        <ul class="mb-0 ps-3 mt-1 text-secondary">
+                            <li>Yer, tarih ve saat bilgisi zorunludur.</li>
+                            <li>Süresi geçen buluşmalar aktif akıştan kalkar.</li>
+                            <li>Aynı kullanıcı birden fazla katılamaz.</li>
+                        </ul>
+                    </div>
+                    <div class="mt-auto">
+                        <a asp-controller="Home" asp-action="Radar" class="btn btn-sm btn-outline-dark w-100">
+                            Sayfayı İncele &rarr;
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sayfa 2: Kayıp & Buluntu -->
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border rounded-4 p-4 shadow-sm bg-white">
+                    <span class="badge bg-light text-dark border align-self-start mb-3">Eşya Bildirimi</span>
+                    <h5 class="fw-bold text-dark mb-2">Kayıp & Buluntu Eşya</h5>
+                    <p class="text-muted small mb-3">
+                        Kampüste kaybedilen veya bulunan eşyaların duyurulduğu alandır. İsteğe bağlı tek fotoğraf ekleme imkanı sunulur ve eşyalar teslim edildiğinde <em>"Çözüldü"</em> olarak işaretlenir.
+                    </p>
+                    <div class="bg-light p-3 rounded-3 small mb-3">
+                        <strong class="text-dark">Temel Kurallar:</strong>
+                        <ul class="mb-0 ps-3 mt-1 text-secondary">
+                            <li>"Kaybettim" veya "Buldum" etiketi seçilir.</li>
+                            <li>Tek fotoğraf desteği sunulur.</li>
+                            <li>Çözülen eşyalar listede arşivlenir.</li>
+                        </ul>
+                    </div>
+                    <div class="mt-auto">
+                        <a asp-controller="Home" asp-action="LostFound" class="btn btn-sm btn-outline-dark w-100">
+                            Sayfayı İncele &rarr;
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sayfa 3: İlan Listeleme ve Arama -->
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border rounded-4 p-4 shadow-sm bg-white">
+                    <span class="badge bg-light text-dark border align-self-start mb-3">Arama & Filtreleme</span>
+                    <h5 class="fw-bold text-dark mb-2">İlan Arama & Filtreleme</h5>
+                    <p class="text-muted small mb-3">
+                        Tüm aktif ilanların kategoriye, arama metnine ve türe göre filtrelendiği, sayfalandığı ve detaylarına ulaşıldığı ortak listeleme ekranıdır.
+                    </p>
+                    <div class="bg-light p-3 rounded-3 small mb-3">
+                        <strong class="text-dark">Temel Kurallar:</strong>
+                        <ul class="mb-0 ps-3 mt-1 text-secondary">
+                            <li>Kategori ve metin bazlı anlık arama.</li>
+                            <li>Sayfalama desteği.</li>
+                            <li>İlan sahibi için düzenleme/silme yetkisi.</li>
+                        </ul>
+                    </div>
+                    <div class="mt-auto">
+                        <a asp-controller="Home" asp-action="Ads" class="btn btn-sm btn-outline-dark w-100">
+                            Sayfayı İncele &rarr;
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sayfa 4: Kullanıcı Giriş & Profil -->
+            <div class="col-md-6 col-lg-6">
+                <div class="card h-100 border rounded-4 p-4 shadow-sm bg-white">
+                    <span class="badge bg-light text-dark border align-self-start mb-3">Kullanıcı İşlemleri</span>
+                    <h5 class="fw-bold text-dark mb-2">Kimlik Doğrulama & Profil</h5>
+                    <p class="text-muted small mb-3">
+                        Kullanıcıların kayıt olma, giriş yapma, çıkış yapma ve profil bilgilerini düzenleme sayfalarını kapsar. Öğrenci ve Yönetici rolleri tanımlanacaktır.
+                    </p>
+                    <div class="bg-light p-3 rounded-3 small mb-0">
+                        <strong class="text-dark">Temel Kurallar:</strong>
+                        <ul class="mb-0 ps-3 mt-1 text-secondary">
+                            <li>Kullanıcı kimlik doğrulama altyapısı.</li>
+                            <li>Öğrenci ve Yönetici rolleri ayrımı.</li>
+                            <li>Profil düzenleme ve kendi ilanlarını yönetme.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sayfa 5: Yönetici (Admin) Paneli -->
+            <div class="col-md-6 col-lg-6">
+                <div class="card h-100 border rounded-4 p-4 shadow-sm bg-white">
+                    <span class="badge bg-light text-dark border align-self-start mb-3">Yönetim</span>
+                    <h5 class="fw-bold text-dark mb-2">Yönetici Paneli (Admin)</h5>
+                    <p class="text-muted small mb-3">
+                        Yalnızca yetkili yöneticilerin erişebildiği, ilan kategorilerini düzenleme ve bildirilen/şikayet edilen uygunsuz ilanları inceleyip gizleme işlemlerinin yapıldığı kontrol panelidir.
+                    </p>
+                    <div class="bg-light p-3 rounded-3 small mb-0">
+                        <strong class="text-dark">Temel Kurallar:</strong>
+                        <ul class="mb-0 ps-3 mt-1 text-secondary">
+                            <li>Yetki kontrolü sunucu tarafında denetlenir.</li>
+                            <li>Kategori ekleme, düzenleme ve silme.</li>
+                            <li>Bildirilen ve uygunsuz bulunan ilanları gizleme.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

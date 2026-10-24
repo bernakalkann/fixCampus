@@ -1,0 +1,111 @@
+@{
+    ViewData["Title"] = "Tüm İlanlar";
+    var currentType = Context.Request.Query["type"].ToString();
+    var currentSearch = Context.Request.Query["search"].ToString();
+    var hasActiveFilter = !string.IsNullOrEmpty(currentType) || !string.IsNullOrEmpty(currentSearch);
+}
+
+<div class="container py-4">
+    <!-- Sayfa Açıklaması ve Kapsam Bilgisi -->
+    <div class="p-4 mb-4 rounded-4 bg-white border shadow-sm">
+        <span class="badge bg-light text-dark border mb-2">İlanlar & Arama Modülü</span>
+        <h2 class="fw-bold text-dark mb-2">Tüm İlanlar Akışı</h2>
+        <p class="text-secondary mb-2">
+            <strong>Modülün Amacı:</strong> Kampüsteki tüm sosyal buluşma ve kayıp-buluntu ilanlarının listelendiği ana akış ekranıdır.
+        </p>
+        <p class="text-muted small mb-0">
+            <strong>Filtreleme & Arama:</strong> İlan filtreleme ve arama özellikleri üst menü çubuğuna entegre edilmiştir. Kategori seçip arama yaptığınızda ilan listesi anlık olarak filtrelenir.
+        </p>
+    </div>
+
+    <!-- Aktif Filtre Senkronizasyon Durumu -->
+    @if (hasActiveFilter)
+    {
+        <div class="alert alert-light border rounded-4 py-2 px-3 d-flex align-items-center justify-content-between mb-4 bg-white shadow-sm">
+            <div class="d-flex align-items-center gap-2 small">
+                <span class="text-muted fw-bold">Menüden Uygulanan Filtre:</span>
+                @if (!string.IsNullOrEmpty(currentType))
+                {
+                    <span class="badge bg-light text-dark border">
+                        @(currentType switch {
+                            "radar" => "Sosyal Radar",
+                            "lost" => "Kayıp Eşya",
+                            "found" => "Buluntu Eşya",
+                            _ => currentType
+                        })
+                    </span>
+                }
+                @if (!string.IsNullOrEmpty(currentSearch))
+                {
+                    <span class="badge bg-light text-dark border">Arama: "@currentSearch"</span>
+                }
+            </div>
+            <a asp-action="Ads" class="btn btn-sm btn-outline-dark py-0 px-2 small">
+                Filtreyi Temizle
+            </a>
+        </div>
+    }
+
+    <!-- İlan Kartları Listesi (Genişletilmiş Grid) -->
+    <div class="row g-4">
+        <!-- Kart 1 -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card border rounded-4 p-4 shadow-sm bg-white h-100">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="badge bg-light text-dark border">Radar Buluşması</span>
+                    <span class="text-muted small">Bugün 16:30</span>
+                </div>
+                <h5 class="fw-bold text-dark mb-1">Final Öncesi Soru Çözümü</h5>
+                <p class="text-muted small mb-3">Kütüphane 2. Kat Grup Çalışma Masası</p>
+                <div class="d-flex justify-content-between align-items-center pt-2 border-top mt-auto">
+                    <span class="text-muted small">4 Katılımcı Geliyor</span>
+                    <a asp-controller="Home" asp-action="Radar" class="btn btn-sm btn-outline-dark">İncele</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Kart 2 -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card border rounded-4 p-4 shadow-sm bg-white h-100">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="badge bg-light text-dark border">Kayıp Eşya</span>
+                    <span class="text-muted small">Dün 14:00</span>
+                </div>
+                <h5 class="fw-bold text-dark mb-1">Unutulan Kulaklık Kutusu</h5>
+                <p class="text-muted small mb-3">Mühendislik Fakültesi D-Blok Amfi 3</p>
+                <div class="d-flex justify-content-between align-items-center pt-2 border-top mt-auto">
+                    <span class="badge bg-light text-muted border">Aranıyor</span>
+                    <a asp-controller="Home" asp-action="LostFound" class="btn btn-sm btn-outline-dark">İncele</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Kart 3 -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card border rounded-4 p-4 shadow-sm bg-white h-100">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="badge bg-light text-dark border">Buluntu Eşya</span>
+                    <span class="text-muted small">2 gün önce</span>
+                </div>
+                <h5 class="fw-bold text-dark mb-1">Mavi Su Matarası ve Anahtarlık</h5>
+                <p class="text-muted small mb-3">Yemekhane Kafe Alanında Bulundu</p>
+                <div class="d-flex justify-content-between align-items-center pt-2 border-top mt-auto">
+                    <span class="badge bg-light text-muted border">Sahibini Bekliyor</span>
+                    <a asp-controller="Home" asp-action="LostFound" class="btn btn-sm btn-outline-dark">İncele</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sayfalama (Pagination) İskeleti -->
+    <div class="d-flex justify-content-center mt-4">
+        <nav>
+            <ul class="pagination pagination-sm mb-0">
+                <li class="page-item disabled"><a class="page-link text-dark" href="#">&laquo;</a></li>
+                <li class="page-item active"><a class="page-link bg-dark border-dark" href="#">Sayfa 1</a></li>
+                <li class="page-item disabled"><a class="page-link text-dark" href="#">Sayfa 2</a></li>
+                <li class="page-item disabled"><a class="page-link text-dark" href="#">&raquo;</a></li>
+            </ul>
+        </nav>
+    </div>
+</div>
