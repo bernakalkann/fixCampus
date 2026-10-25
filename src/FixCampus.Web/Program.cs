@@ -1,3 +1,6 @@
+using FixCampus.Web.Auth;
+using Microsoft.AspNetCore.Authentication;
+using System.Threading.RateLimiting;
 using FixCampus.Web.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -5,6 +8,17 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddOpenApi();
+builder.Services.AddHttpClient<SupabaseAuthClient>(client => client.Timeout = TimeSpan.FromSeconds(15));
+builder.Services.AddAuthentication("Supabase")
+    .AddScheme<AuthenticationSchemeOptions, SupabaseAuthenticationHandler>("Supabase", _ => { });
+builder.Services.AddAuthorization();
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("auth", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown", _ => new FixedWindowRateLimiterOptions
+        { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+});
 builder.Services.AddSingleton(TimeProvider.System);
 
 // Keep the week-one demo usable without a database secret.
@@ -48,6 +62,8 @@ else
 
 app.UseStaticFiles();
 app.UseRouting();
+app.UseRateLimiter();
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllerRoute(
