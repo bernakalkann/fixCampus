@@ -36,7 +36,8 @@ public sealed class AuthController(SupabaseAuthClient auth) : ControllerBase
                 token: Request.Headers.Authorization.ToString()[7..].Trim(), ct: ct);
             return response.IsSuccessStatusCode ? NoContent() : Unauthorized(new { message = "Oturum sonlandırılamadı." });
         }
-        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException)
+        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException ||
+            (ex is OperationCanceledException && !ct.IsCancellationRequested))
         { return StatusCode(503, new { message = "Kimlik doğrulama servisine ulaşılamadı." }); }
     }
 
@@ -76,7 +77,8 @@ public sealed class AuthController(SupabaseAuthClient auth) : ControllerBase
             var result = await SupabaseAuthClient.ReadAsync(response, ct);
             return Ok(result);
         }
-        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or System.Text.Json.JsonException)
+        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or System.Text.Json.JsonException ||
+            (ex is OperationCanceledException && !ct.IsCancellationRequested))
         { return StatusCode(503, new { message = "Kimlik doğrulama servisine ulaşılamadı." }); }
     }
 }
