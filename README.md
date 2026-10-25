@@ -104,3 +104,35 @@ API: GET /api/veritabani/ornek-ilan (Development). Mevcut sabit örnek API deği
 
 Canlı Supabase kurulumu için bağlantı ayarlarını yerelde tanımlayıp migration ve
 demo komutlarını çalıştırmak gerekir; bu ortamda derleme/canlı bağlantı doğrulanmadı.
+
+
+## Hafta 2 — Rol ve yetki kontrolü (Zülfikar Durak)
+
+Uygulama rolü, Supabase'in doğruladığı kullanıcı kimliğiyle `Profiller.Rol`
+alanından okunur. İstek gövdesi, başlık veya kullanıcı metadatasındaki rol
+bilgisi yetki vermez. Rol değişikliği sonraki istekte geçerli olur.
+
+| API | İzin |
+|---|---|
+| `GET /api/yetki/ogrenci` | Öğrenci veya yönetici |
+| `GET /api/yetki/yonetici` | Yalnız yönetici |
+
+Girişsiz/geçersiz oturum 401, yetersiz ya da tanımsız rol 403 döner. Auth veya
+rol veritabanı erişimi kesilirse kontrollü JSON 503 döner; erişim verilmez.
+İlk profilini oluşturacak kullanıcının `PUT /api/profil` akışı yalnızca geçerli
+oturum gerektirir; henüz profili olmadığı için kilitlenmez.
+
+Swagger'da **Authorize** alanına giriş yanıtındaki `access_token` değerini
+vererek korunan uçları deneyebilirsiniz. Kayıt/giriş ve sabit örnek API'ler
+herkese açık kalır. Yönetim işlevleri sonraki haftalarda bu politikaları kullanır.
+
+Harici servise veya veritabanına yazmadan doğrulama:
+
+```powershell
+dotnet build fixCampus.slnx
+dotnet run --project tests/FixCampus.AuthChecks
+dotnet run --project tests/FixCampus.AuthorizationChecks
+```
+
+Kontroller gerçek HTTP hattında öğrenci/yönetici erişimini, rol/kimlik taklidini,
+eksik profili, rol değişikliğini, servis kesintisini ve Swagger izinlerini sınar.

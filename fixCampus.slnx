@@ -1,3 +1,8 @@
 <Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/tests/">
+    <Project Path="tests/FixCampus.AuthChecks/FixCampus.AuthChecks.csproj" />
+    <Project Path="tests/FixCampus.AuthorizationChecks/FixCampus.AuthorizationChecks.csproj" />
+  </Folder>
   <Project Path="src/FixCampus.Web/FixCampus.Web.csproj" />
 </Solution>

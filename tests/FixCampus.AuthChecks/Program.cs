@@ -61,7 +61,28 @@ transport.ResponseBody = "{\"id\":\"fdeef191-f6df-4fba-a4e1-d33992eab002\",\"ema
 var verified = await Authenticate("valid-test-token");
 Require(verified.Succeeded, "Verified identity rejected.");
 Require(!verified.Principal!.IsInRole("Yonetici"), "Untrusted metadata granted administrator role.");
-Console.WriteLine("PASS: signup, login, refresh errors, logout, configuration and secret-safe errors.");
+// A real HttpClient timeout must become a controlled service error, not escape.
+using var slowHttp = new HttpClient(new SlowTransport()) { Timeout = TimeSpan.FromMilliseconds(50) };
+var slowClient = new SupabaseAuthClient(slowHttp, configuration);
+var slowController = new AuthController(slowClient)
+{ ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() } };
+slowController.Request.Headers.Authorization = "Bearer test-token";
+Require(await slowController.Login(new LoginRequest(), default) is ObjectResult { StatusCode: 503 }, "Login timeout escaped.");
+Require(await slowController.Refresh(new RefreshRequest(), default) is ObjectResult { StatusCode: 503 }, "Refresh timeout escaped.");
+Require(await slowController.Logout(default) is ObjectResult { StatusCode: 503 }, "Logout timeout escaped.");
+var slowServices = new ServiceCollection();
+slowServices.AddLogging();
+slowServices.AddSingleton(slowClient);
+slowServices.AddAuthentication("Supabase").AddScheme<AuthenticationSchemeOptions, SupabaseAuthenticationHandler>("Supabase", _ => { });
+await using var slowProvider = slowServices.BuildServiceProvider();
+await using var slowScope = slowProvider.CreateAsyncScope();
+var slowContext = new DefaultHttpContext { RequestServices = slowScope.ServiceProvider };
+slowContext.Request.Headers.Authorization = "Bearer test-token";
+slowContext.Response.Body = new MemoryStream();
+Require(!(await slowContext.AuthenticateAsync("Supabase")).Succeeded, "Timeout authenticated a user.");
+await slowContext.ChallengeAsync("Supabase");
+Require(slowContext.Response.StatusCode == 503, "Authentication timeout must return 503, not 401/500.");
+Console.WriteLine("PASS: Auth flows, invalid identity and controlled timeout responses.");
 static void Require(bool ok, string message) { if (!ok) throw new Exception(message); }
 sealed class FakeTransport : HttpMessageHandler
 {
@@ -75,5 +96,14 @@ sealed class FakeTransport : HttpMessageHandler
         ApiKey = request.Headers.GetValues("apikey").Single();
         Token = request.Headers.Authorization?.Parameter;
         return new HttpResponseMessage(Status) { Content = new StringContent(ResponseBody, Encoding.UTF8, "application/json") };
+    }
+}
+
+sealed class SlowTransport : HttpMessageHandler
+{
+    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+    {
+        await Task.Delay(TimeSpan.FromSeconds(2), ct);
+        return new HttpResponseMessage(HttpStatusCode.OK);
     }
 }
