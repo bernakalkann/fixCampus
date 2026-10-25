@@ -1,4 +1,5 @@
 using FixCampus.Web.Auth;
+using FixCampus.Web.Authorization;
 using Microsoft.AspNetCore.Authentication;
 using System.Threading.RateLimiting;
 using FixCampus.Web.Data;
@@ -11,7 +12,7 @@ builder.Services.AddOpenApi();
 builder.Services.AddHttpClient<SupabaseAuthClient>(client => client.Timeout = TimeSpan.FromSeconds(15));
 builder.Services.AddAuthentication("Supabase")
     .AddScheme<AuthenticationSchemeOptions, SupabaseAuthenticationHandler>("Supabase", _ => { });
-builder.Services.AddAuthorization();
+builder.Services.AddCampusAuthorization();
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
