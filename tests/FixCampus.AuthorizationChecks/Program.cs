@@ -5,10 +5,27 @@ using System.Text.Json;
 using FixCampus.Web.Auth;
 using FixCampus.Web.Authorization;
 using FixCampus.Web.Controllers.Api;
+using FixCampus.Web.Data;
+using FixCampus.Web.OpenApi;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+
+// Optional SELECT-only check against a configured project's existing profile.
+if (args.Length == 2 && args[0] == "--live-role-read" && Guid.TryParse(args[1], out var existingUserId))
+{
+    var liveConfiguration = new ConfigurationBuilder()
+        .AddUserSecrets(typeof(ProfileRoleReader).Assembly).AddEnvironmentVariables().Build();
+    var connection = liveConfiguration.GetConnectionString("Supabase")
+        ?? throw new InvalidOperationException("ConnectionStrings:Supabase eksik.");
+    await using var db = new FixCampusDbContext(new DbContextOptionsBuilder<FixCampusDbContext>().UseNpgsql(connection).Options);
+    var role = await new ProfileRoleReader(db).ReadAsync(existingUserId, CancellationToken.None);
+    if (role is not (AppRoles.Student or AppRoles.Administrator)) throw new Exception("Existing profile has no valid application role.");
+    Console.WriteLine($"PASS: live profile role SELECT ({role}); no writes.");
+    return;
+}
 
 // Exercise the real HTTP authentication/authorization pipeline; external services are deterministic fakes.
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = "Development" });
@@ -21,6 +38,7 @@ builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
 });
 var roleStore = new TestRoleStore();
 builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddOpenApi(options => options.AddDocumentTransformer<BearerSecurityDocumentTransformer>());
 builder.Services.AddControllers().AddApplicationPart(typeof(AccessController).Assembly);
 builder.Services.AddSingleton(new SupabaseAuthClient(new HttpClient(new TestAuthTransport()), builder.Configuration));
 builder.Services.AddAuthentication("Supabase")
@@ -31,6 +49,7 @@ await using var app = builder.Build();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapOpenApi();
 app.MapGet("/auth-only", () => Results.Ok()).RequireAuthorization();
 await app.StartAsync();
 try
@@ -84,7 +103,24 @@ try
     await Check("/api/yetki/ogrenci", "student", HttpStatusCode.ServiceUnavailable);
     roleStore.Unavailable = false;
     await Check("/api/yetki/yonetici", "auth-unavailable", HttpStatusCode.ServiceUnavailable);
-    Console.WriteLine($"PASS: {count} HTTP authorization checks (401/403/200/503, trusted role, role changes, bootstrap).");
+    using var document = JsonDocument.Parse(await http.GetStringAsync("/openapi/v1.json"));
+    var root = document.RootElement;
+    if (root.GetProperty("components").GetProperty("securitySchemes").GetProperty("Bearer").GetProperty("scheme").GetString() != "bearer")
+        throw new Exception("Swagger Bearer scheme missing.");
+    var paths = root.GetProperty("paths");
+    foreach (var (path, method) in new[] { ("/api/yetki/ogrenci", "get"), ("/api/yetki/yonetici", "get"), ("/api/profil", "get"), ("/api/profil", "put"), ("/api/auth/cikis", "post") })
+    {
+        if (!paths.GetProperty(path).GetProperty(method).GetProperty("security")[0].TryGetProperty("Bearer", out _))
+            throw new Exception("Protected operation missing Swagger authorization.");
+        count++;
+    }
+    foreach (var (path, method) in new[] { ("/api/durum", "get"), ("/api/ornek/ilanlar", "get"), ("/api/auth/giris", "post"), ("/api/auth/kayit", "post"), ("/api/auth/yenile", "post") })
+    {
+        if (paths.GetProperty(path).GetProperty(method).TryGetProperty("security", out var security) && security.GetArrayLength() > 0)
+            throw new Exception("Public operation unexpectedly requires Swagger authorization.");
+        count++;
+    }
+    Console.WriteLine($"PASS: {count} HTTP authorization/OpenAPI checks (401/403/200/503, role changes, bootstrap, Bearer security).");
 }
 finally { await app.StopAsync(); }
 

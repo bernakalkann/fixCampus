@@ -1,5 +1,6 @@
 using FixCampus.Web.Auth;
 using FixCampus.Web.Authorization;
+using FixCampus.Web.OpenApi;
 using Microsoft.AspNetCore.Authentication;
 using System.Threading.RateLimiting;
 using FixCampus.Web.Data;
@@ -8,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(options => options.AddDocumentTransformer<BearerSecurityDocumentTransformer>());
 builder.Services.AddHttpClient<SupabaseAuthClient>(client => client.Timeout = TimeSpan.FromSeconds(15));
 builder.Services.AddAuthentication("Supabase")
     .AddScheme<AuthenticationSchemeOptions, SupabaseAuthenticationHandler>("Supabase", _ => { });
