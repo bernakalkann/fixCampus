@@ -157,6 +157,24 @@
                 authSubtitle.innerText = 'Öğrenci hesabınızla oturum açın';
                 authIcon.className = 'bi bi-person-fill text-dark fs-3';
                 adminNotice.style.display = 'none';
+            }
         }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const btnStudent = document.getElementById('tabStudent');
+            const btnAdmin = document.getElementById('tabAdmin');
+
+            if (btnStudent) {
+                btnStudent.addEventListener('click', function () { selectLoginType('student'); });
+            }
+            if (btnAdmin) {
+                btnAdmin.addEventListener('click', function () { selectLoginType('admin'); });
+            }
+
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('type') === 'admin' || urlParams.get('userType') === 'admin') {
+                selectLoginType('admin');
+            }
+        });
     </script>
 }
