@@ -74,17 +74,80 @@
                     </form>
 
                     <div class="d-flex align-items-center gap-2">
-                        <a href="javascript:void(0)" class="btn btn-dark btn-sm px-3">
-                            İlan Ver
-                        </a>
-                        <a href="javascript:void(0)" class="btn btn-outline-dark btn-sm px-3">
-                            Giriş Yap
-                        </a>
+                        @if (User.Identity?.IsAuthenticated == true)
+                        {
+                            <a asp-controller="Home" asp-action="Ads" class="btn btn-dark btn-sm px-3">
+                                İlan Ver
+                            </a>
+
+                            <div class="dropdown">
+                                <button class="btn btn-outline-dark btn-sm px-3 dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="bi bi-person-circle"></i>
+                                    <span class="d-none d-sm-inline">@User.Identity.Name</span>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end shadow-sm border rounded-3 mt-2">
+                                    <li class="px-3 py-2 border-bottom">
+                                        <div class="fw-semibold small text-dark">@User.Identity.Name</div>
+                                        <div class="text-muted" style="font-size: 0.75rem;">@User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Email)?.Value</div>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item py-2 small d-flex align-items-center gap-2" asp-controller="Account" asp-action="Profile">
+                                            <i class="bi bi-person text-muted"></i> Profilim
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item py-2 small d-flex align-items-center gap-2" asp-controller="Home" asp-action="Ads">
+                                            <i class="bi bi-collection text-muted"></i> İlanlarım
+                                        </a>
+                                    </li>
+                                    <li><hr class="dropdown-divider my-1"></li>
+                                    <li>
+                                        <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline w-100">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="dropdown-item py-2 small text-danger d-flex align-items-center gap-2">
+                                                <i class="bi bi-box-arrow-right"></i> Çıkış Yap
+                                            </button>
+                                        </form>
+                                    </li>
+                                </ul>
+                            </div>
+                        }
+                        else
+                        {
+                            <a asp-controller="Account" asp-action="Login" asp-route-returnUrl="@Context.Request.Path" class="btn btn-dark btn-sm px-3">
+                                İlan Ver
+                            </a>
+                            <a asp-controller="Account" asp-action="Login" class="btn btn-outline-dark btn-sm px-3">
+                                Giriş Yap
+                            </a>
+                            <a asp-controller="Account" asp-action="Register" class="btn btn-light border btn-sm px-3 d-none d-md-inline-block">
+                                Kayıt Ol
+                            </a>
+                        }
                     </div>
                 </div>
             </div>
         </nav>
     </header>
+
+    @if (TempData["SuccessMessage"] != null && ViewContext.RouteData.Values["Controller"]?.ToString() != "Account")
+    {
+        <div class="container mt-3">
+            <div class="alert alert-success border-0 shadow-sm rounded-4 d-flex align-items-center gap-2" role="alert">
+                <i class="bi bi-check-circle-fill fs-5 text-success"></i>
+                <div>@TempData["SuccessMessage"]</div>
+            </div>
+        </div>
+    }
+    @if (TempData["InfoMessage"] != null && ViewContext.RouteData.Values["Controller"]?.ToString() != "Account")
+    {
+        <div class="container mt-3">
+            <div class="alert alert-secondary border-0 shadow-sm rounded-4 d-flex align-items-center gap-2" role="alert">
+                <i class="bi bi-info-circle-fill fs-5 text-secondary"></i>
+                <div>@TempData["InfoMessage"]</div>
+            </div>
+        </div>
+    }
 
     <!-- Ana İçerik -->
     <main role="main">

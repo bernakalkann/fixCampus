@@ -1,0 +1,142 @@
+@model FixCampus.Web.Models.Account.RegisterViewModel
+@{
+    ViewData["Title"] = "Kayıt Ol";
+}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-12 col-sm-11 col-md-9 col-lg-6">
+
+            <div class="card border rounded-4 shadow-sm bg-white overflow-hidden">
+                <div class="card-body p-4 p-md-5">
+
+                    <div class="text-center mb-4">
+                        <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-light border p-3 mb-3" style="width: 58px; height: 58px;">
+                            <i class="bi bi-person-plus-fill text-dark fs-3"></i>
+                        </div>
+                        <h3 class="fw-bold text-dark mb-1">Hesap Oluşturun</h3>
+                        <p class="text-muted small mb-0">Kampüs sosyal ağına ve ilan platformuna katılın</p>
+                    </div>
+
+                    <form asp-controller="Account" asp-action="Register" method="post" novalidate>
+                        @Html.AntiForgeryToken()
+
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger border-0 rounded-3 small py-2 px-3 mb-3" role="alert"></div>
+
+                        <!-- Ad Soyad -->
+                        <div class="mb-3">
+                            <label asp-for="FullName" class="form-label fw-semibold small text-dark"></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0 text-muted">
+                                    <i class="bi bi-person"></i>
+                                </span>
+                                <input asp-for="FullName" class="form-control border-start-0 ps-0" placeholder="Adınız ve Soyadınız" autofocus />
+                            </div>
+                            <span asp-validation-for="FullName" class="text-danger small"></span>
+                        </div>
+
+                        <!-- Öğrenci No & Üniversite E-postası -->
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label asp-for="StudentNo" class="form-label fw-semibold small text-dark"></label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0 text-muted">
+                                        <i class="bi bi-card-text"></i>
+                                    </span>
+                                    <input asp-for="StudentNo" class="form-control border-start-0 ps-0" placeholder="Örn: 22290455" maxlength="8" />
+                                </div>
+                                <span asp-validation-for="StudentNo" class="text-danger small"></span>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label asp-for="Email" class="form-label fw-semibold small text-dark"></label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0 text-muted">
+                                        <i class="bi bi-envelope"></i>
+                                    </span>
+                                    <input asp-for="Email" class="form-control border-start-0 ps-0" placeholder="ogrenci@ankara.edu.tr" />
+                                </div>
+                                <span asp-validation-for="Email" class="text-danger small"></span>
+                            </div>
+                        </div>
+
+                        <!-- Bölüm Seçimi -->
+                        <div class="mb-3">
+                            <label asp-for="Department" class="form-label fw-semibold small text-dark"></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0 text-muted">
+                                    <i class="bi bi-mortarboard"></i>
+                                </span>
+                                <select asp-for="Department" class="form-select border-start-0 ps-0">
+                                    <option value="">Bölümünüzü seçiniz...</option>
+                                    <option value="Bilgisayar Mühendisliği">Bilgisayar Mühendisliği</option>
+                                    <option value="Elektrik-Elektronik Mühendisliği">Elektrik-Elektronik Mühendisliği</option>
+                                    <option value="Yazılım Mühendisliği">Yazılım Mühendisliği</option>
+                                    <option value="Yapay Zeka Mühendisliği">Yapay Zeka Mühendisliği</option>
+                                    <option value="Makine Mühendisliği">Makine Mühendisliği</option>
+                                    <option value="Biyomedikal Mühendisliği">Biyomedikal Mühendisliği</option>
+                                    <option value="Kimya Mühendisliği">Kimya Mühendisliği</option>
+                                    <option value="Fizik Mühendisliği">Fizik Mühendisliği</option>
+                                    <option value="Matematik">Matematik</option>
+                                    <option value="Diğer Bölüm">Diğer Bölüm</option>
+                                </select>
+                            </div>
+                            <span asp-validation-for="Department" class="text-danger small"></span>
+                        </div>
+
+                        <!-- Şifre & Şifre Tekrar -->
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label asp-for="Password" class="form-label fw-semibold small text-dark"></label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0 text-muted">
+                                        <i class="bi bi-lock"></i>
+                                    </span>
+                                    <input asp-for="Password" class="form-control border-start-0 ps-0" placeholder="En az 6 karakter" />
+                                </div>
+                                <span asp-validation-for="Password" class="text-danger small"></span>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label asp-for="ConfirmPassword" class="form-label fw-semibold small text-dark"></label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0 text-muted">
+                                        <i class="bi bi-lock-fill"></i>
+                                    </span>
+                                    <input asp-for="ConfirmPassword" class="form-control border-start-0 ps-0" placeholder="Tekrar giriniz" />
+                                </div>
+                                <span asp-validation-for="ConfirmPassword" class="text-danger small"></span>
+                            </div>
+                        </div>
+
+                        <!-- Kullanım Koşulları Onayı -->
+                        <div class="form-check mb-4">
+                            <input class="form-check-input" type="checkbox" asp-for="TermsAccepted" id="termsCheck" />
+                            <label class="form-check-label text-muted small" for="termsCheck">
+                                <span class="text-dark fw-medium">fixCampus</span> topluluk kurallarını ve güvenli kampüs ilkelerini kabul ediyorum.
+                            </label>
+                            <span asp-validation-for="TermsAccepted" class="text-danger d-block small"></span>
+                        </div>
+
+                        <button type="submit" class="btn btn-dark w-100 py-2 rounded-3 fw-semibold">
+                            Hesap Oluştur ve Katıl
+                        </button>
+                    </form>
+
+                    <div class="text-center mt-4 pt-2 border-top">
+                        <span class="text-muted small">Zaten kayıtlı bir hesabınız var mı?</span>
+                        <a asp-action="Login" class="text-dark fw-semibold small ms-1 text-decoration-none border-bottom border-dark pb-1">
+                            Giriş Yapın
+                        </a>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

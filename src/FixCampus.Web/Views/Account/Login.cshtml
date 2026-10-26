@@ -1,0 +1,121 @@
+@model FixCampus.Web.Models.Account.LoginViewModel
+@{
+    ViewData["Title"] = "Giriş Yap";
+}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-12 col-sm-10 col-md-8 col-lg-5">
+            
+            @if (TempData["SuccessMessage"] != null)
+            {
+                <div class="alert alert-success border-0 shadow-sm rounded-3 mb-4 d-flex align-items-center gap-2" role="alert">
+                    <i class="bi bi-check-circle-fill fs-5 text-success"></i>
+                    <div>@TempData["SuccessMessage"]</div>
+                </div>
+            }
+
+            @if (TempData["InfoMessage"] != null)
+            {
+                <div class="alert alert-secondary border-0 shadow-sm rounded-3 mb-4 d-flex align-items-center gap-2" role="alert">
+                    <i class="bi bi-info-circle-fill fs-5 text-secondary"></i>
+                    <div>@TempData["InfoMessage"]</div>
+                </div>
+            }
+
+            <div class="card border rounded-4 shadow-sm bg-white overflow-hidden">
+                <div class="card-body p-4 p-md-5">
+                    
+                    <div class="text-center mb-4">
+                        <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-light border p-3 mb-3" style="width: 58px; height: 58px;">
+                            <i class="bi bi-person-fill text-dark fs-3"></i>
+                        </div>
+                        <h3 class="fw-bold text-dark mb-1">fixCampus Giriş</h3>
+                        <p class="text-muted small mb-0">Öğrenci veya yönetici hesabınızla oturum açın</p>
+                    </div>
+
+                    <form asp-controller="Account" asp-action="Login" method="post" novalidate>
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" asp-for="ReturnUrl" />
+
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger border-0 rounded-3 small py-2 px-3 mb-3" role="alert"></div>
+
+                        <div class="mb-3">
+                            <label asp-for="EmailOrStudentNo" class="form-label fw-semibold small text-dark"></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0 text-muted">
+                                    <i class="bi bi-envelope"></i>
+                                </span>
+                                <input asp-for="EmailOrStudentNo" class="form-control border-start-0 ps-0" placeholder="Örn: 22290455 veya e-posta" autofocus />
+                            </div>
+                            <span asp-validation-for="EmailOrStudentNo" class="text-danger small"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <label asp-for="Password" class="form-label fw-semibold small text-dark mb-0"></label>
+                                <a asp-action="ForgotPassword" class="text-muted small text-decoration-none">Şifremi unuttum?</a>
+                            </div>
+                            <div class="input-group mt-1">
+                                <span class="input-group-text bg-light border-end-0 text-muted">
+                                    <i class="bi bi-lock"></i>
+                                </span>
+                                <input asp-for="Password" class="form-control border-start-0 ps-0" placeholder="Şifreniz" />
+                            </div>
+                            <span asp-validation-for="Password" class="text-danger small"></span>
+                        </div>
+
+                        <div class="form-check mb-4">
+                            <input class="form-check-input" type="checkbox" asp-for="RememberMe" id="rememberMeCheck" />
+                            <label class="form-check-label text-muted small" for="rememberMeCheck">
+                                Oturumumu açık tut (7 gün)
+                            </label>
+                        </div>
+
+                        <button type="submit" class="btn btn-dark w-100 py-2 rounded-3 fw-semibold">
+                            Giriş Yap
+                        </button>
+                    </form>
+
+                    <!-- Hızlı Demo Girişi (Geliştirme & Sunum Kolaylığı) -->
+                    <div class="mt-4 pt-3 border-top text-center">
+                        <span class="text-muted small d-block mb-2">Hızlı Demo Doldurma:</span>
+                        <div class="d-flex gap-2 justify-content-center">
+                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1" onclick="quickFill('22290455', '123456')">
+                                Öğrenci (Berke)
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1" onclick="quickFill('yonetici@ankara.edu.tr', 'admin123')">
+                                Yönetici
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="text-center mt-4 pt-2">
+                        <span class="text-muted small">Henüz hesabınız yok mu?</span>
+                        <a asp-action="Register" class="text-dark fw-semibold small ms-1 text-decoration-none border-bottom border-dark pb-1">
+                            Hemen Kayıt Olun
+                        </a>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Bilgilendirme Kartı -->
+            <div class="p-3 bg-light rounded-4 border mt-3 text-center text-muted small">
+                <i class="bi bi-shield-lock me-1"></i>
+                fixCampus, üniversite e-posta sistemi ve Supabase güvenli kimlik doğrulama altyapısını kullanır.
+            </div>
+
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        function quickFill(user, pass) {
+            document.getElementById('EmailOrStudentNo').value = user;
+            document.getElementById('Password').value = pass;
+        }
+    </script>
+}
