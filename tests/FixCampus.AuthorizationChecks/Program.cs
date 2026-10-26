@@ -9,6 +9,10 @@ using FixCampus.Web.Data;
 using FixCampus.Web.OpenApi;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Options;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -41,25 +45,48 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddOpenApi(options => options.AddDocumentTransformer<BearerSecurityDocumentTransformer>());
 builder.Services.AddControllers().AddApplicationPart(typeof(AccessController).Assembly);
 builder.Services.AddSingleton(new SupabaseAuthClient(new HttpClient(new TestAuthTransport()), builder.Configuration));
-builder.Services.AddAuthentication("Supabase")
+// Match the web app: MVC uses cookies; API endpoints must explicitly use Bearer.
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie()
     .AddScheme<AuthenticationSchemeOptions, SupabaseAuthenticationHandler>("Supabase", _ => { });
+builder.Services.AddRateLimiter(options => options.AddPolicy("auth", _ => RateLimitPartition.GetNoLimiter("auth-checks")));
 builder.Services.AddCampusAuthorization();
 builder.Services.Replace(ServiceDescriptor.Singleton<IProfileRoleReader>(roleStore));
 await using var app = builder.Build();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
+// Check the real profile endpoint's authorization without executing shared-database SQL.
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path == "/api/profil")
+    {
+        await context.Response.WriteAsJsonAsync(new { userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier) });
+        return;
+    }
+    await next();
+});
 app.MapControllers();
 app.MapOpenApi();
-app.MapGet("/auth-only", () => Results.Ok()).RequireAuthorization();
+app.MapGet("/auth-only", () => Results.Ok())
+    .RequireAuthorization(new AuthorizeAttribute { AuthenticationSchemes = "Supabase" });
+app.MapGet("/web-only", () => Results.Ok()).RequireAuthorization();
 await app.StartAsync();
 try
 {
     var address = app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.Single();
-    using var http = new HttpClient { BaseAddress = new Uri(address) };
+    using var http = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false }) { BaseAddress = new Uri(address) };
+    var cookieOptions = app.Services.GetRequiredService<IOptionsMonitor<CookieAuthenticationOptions>>()
+        .Get(CookieAuthenticationDefaults.AuthenticationScheme);
+    var cookieTicket = new AuthenticationTicket(new ClaimsPrincipal(new ClaimsIdentity(
+        new[] { new Claim(ClaimTypes.NameIdentifier, TestRoleStore.StudentId.ToString()) },
+        CookieAuthenticationDefaults.AuthenticationScheme)), CookieAuthenticationDefaults.AuthenticationScheme);
+    var webCookie = cookieOptions.Cookie.Name + "=" + cookieOptions.TicketDataFormat.Protect(cookieTicket);
     var count = 0;
-    async Task Check(string path, string? token, HttpStatusCode expected, string? expectedRole = null, bool forgedHeaders = false)
+    async Task Check(string path, string? token, HttpStatusCode expected, string? expectedRole = null, bool forgedHeaders = false, string? cookie = null, HttpMethod? method = null)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Get, path);
+        using var request = new HttpRequestMessage(method ?? HttpMethod.Get, path);
+        if (cookie is not null) request.Headers.Add("Cookie", cookie);
         if (token is not null) request.Headers.Authorization = new("Bearer", token);
         if (forgedHeaders)
         {
@@ -103,6 +130,18 @@ try
     await Check("/api/yetki/ogrenci", "student", HttpStatusCode.ServiceUnavailable);
     roleStore.Unavailable = false;
     await Check("/api/yetki/yonetici", "auth-unavailable", HttpStatusCode.ServiceUnavailable);
+    await Check("/api/profil", "student", HttpStatusCode.OK);
+    await Check("/api/profil", "student", HttpStatusCode.OK, method: HttpMethod.Put);
+    await Check("/api/profil", null, HttpStatusCode.Unauthorized);
+    await Check("/api/profil", "invalid", HttpStatusCode.Unauthorized);
+    await Check("/api/profil", null, HttpStatusCode.Unauthorized, cookie: webCookie);
+    await Check("/api/profil", null, HttpStatusCode.Unauthorized, cookie: webCookie, method: HttpMethod.Put);
+    await Check("/api/profil", "auth-unavailable", HttpStatusCode.ServiceUnavailable);
+    await Check("/api/auth/cikis", null, HttpStatusCode.Unauthorized, method: HttpMethod.Post);
+    await Check("/api/auth/cikis", null, HttpStatusCode.Unauthorized, cookie: webCookie, method: HttpMethod.Post);
+    await Check("/api/auth/cikis", "student", HttpStatusCode.NoContent, method: HttpMethod.Post);
+    await Check("/web-only", null, HttpStatusCode.Redirect);
+    await Check("/web-only", null, HttpStatusCode.OK, cookie: webCookie);
     using var document = JsonDocument.Parse(await http.GetStringAsync("/openapi/v1.json"));
     var root = document.RootElement;
     if (root.GetProperty("components").GetProperty("securitySchemes").GetProperty("Bearer").GetProperty("scheme").GetString() != "bearer")
@@ -120,7 +159,7 @@ try
             throw new Exception("Public operation unexpectedly requires Swagger authorization.");
         count++;
     }
-    Console.WriteLine($"PASS: {count} HTTP authorization/OpenAPI checks (401/403/200/503, role changes, bootstrap, Bearer security).");
+    Console.WriteLine($"PASS: {count} HTTP authorization/OpenAPI checks (401/403/200/503, role changes, bootstrap, Cookie/Bearer separation, Bearer security).");
 }
 finally { await app.StopAsync(); }
 

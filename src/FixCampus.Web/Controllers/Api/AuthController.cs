@@ -27,7 +27,7 @@ public sealed class AuthController(SupabaseAuthClient auth) : ControllerBase
     public Task<IActionResult> Refresh(RefreshRequest request, CancellationToken ct) =>
         Forward("token?grant_type=refresh_token", new { refresh_token = request.RefreshToken }, ct);
 
-    [Authorize, HttpPost("cikis")]
+    [Authorize(AuthenticationSchemes = "Supabase"), HttpPost("cikis")]
     public async Task<IActionResult> Logout(CancellationToken ct)
     {
         try

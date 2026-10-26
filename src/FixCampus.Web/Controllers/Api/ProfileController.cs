@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FixCampus.Web.Controllers.Api;
 
-[ApiController, Authorize, Route("api/profil")]
+[ApiController, Authorize(AuthenticationSchemes = "Supabase"), Route("api/profil")]
 [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 public sealed class ProfileController(FixCampusDbContext db) : ControllerBase
 {
