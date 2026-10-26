@@ -10,10 +10,12 @@ namespace FixCampus.Web.Controllers;
 public class AccountController : Controller
 {
     private readonly ILogger<AccountController> _logger;
+    private readonly IConfiguration _configuration;
 
-    public AccountController(ILogger<AccountController> logger)
+    public AccountController(ILogger<AccountController> logger, IConfiguration configuration)
     {
         _logger = logger;
+        _configuration = configuration;
     }
 
     // ==========================================
@@ -43,6 +45,13 @@ public class AccountController : Controller
             return View(model);
         }
 
+        // Basit şifre uzunluk kontrolü (En az 6 karakter)
+        if (model.Password.Length < 6)
+        {
+            ModelState.AddModelError(string.Empty, "Geçersiz şifre! Şifreniz en az 6 karakter olmalıdır.");
+            return View(model);
+        }
+
         // Rol ve kullanıcı bilgileri ayrımı (Öğrenci veya Yönetici)
         string fullName;
         string email;
@@ -54,11 +63,26 @@ public class AccountController : Controller
 
         if (model.UserType == "admin")
         {
+            var adminEmail = _configuration["AdminSettings:Email"] ?? "admin@ankara.edu.tr";
+            var adminPassword = _configuration["AdminSettings:Password"];
+            var adminFullName = _configuration["AdminSettings:FullName"] ?? "Sistem Yöneticisi";
+            var adminDepartment = _configuration["AdminSettings:Department"] ?? "Öğrenci İşleri Daire Başkanlığı";
+
+            var isEmailMatch = string.Equals(input, adminEmail, StringComparison.OrdinalIgnoreCase);
+            var isPassMatch = !string.IsNullOrEmpty(adminPassword) && model.Password == adminPassword;
+
+            if (!isEmailMatch || !isPassMatch)
+            {
+                _logger.LogWarning("Yetkisiz veya geçersiz yönetici girişi denemesi: {InputEmail}", input);
+                ModelState.AddModelError(string.Empty, "Geçersiz yönetici kimlik bilgileri veya yetkisiz erişim!");
+                return View(model);
+            }
+
             role = "Yonetici";
-            fullName = "Kampüs Yönetici";
+            fullName = adminFullName;
             studentNo = "99990001";
-            email = input.Contains('@') ? input : $"{input}@ankara.edu.tr";
-            department = "Öğrenci İşleri Daire Başkanlığı";
+            email = adminEmail;
+            department = adminDepartment;
         }
         else
         {
@@ -84,13 +108,6 @@ public class AccountController : Controller
                 fullName = "Öğrenci " + studentNo;
                 department = "Mühendislik Fakültesi";
             }
-        }
-
-        // Basit şifre uzunluk kontrolü (En az 6 karakter)
-        if (model.Password.Length < 6)
-        {
-            ModelState.AddModelError(string.Empty, "Geçersiz şifre! Şifreniz en az 6 karakter olmalıdır.");
-            return View(model);
         }
 
         // Kullanıcı Claims listesi oluşturuluyor
@@ -171,7 +188,7 @@ public class AccountController : Controller
             new(ClaimTypes.Email, model.Email.Trim().ToLower()),
             new(ClaimTypes.Role, "Ogrenci"),
             new("StudentNo", model.StudentNo.Trim()),
-            new("Department", model.Department.Trim())
+            new("Department", "")
         };
 
         var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
@@ -198,7 +215,7 @@ public class AccountController : Controller
         var email = User.FindFirstValue(ClaimTypes.Email) ?? "";
         var role = User.FindFirstValue(ClaimTypes.Role) ?? "Ogrenci";
         var studentNo = User.FindFirstValue("StudentNo") ?? "22290455";
-        var department = User.FindFirstValue("Department") ?? "Bilgisayar Mühendisliği";
+        var department = User.FindFirstValue("Department") ?? "";
 
         var viewModel = new ProfileViewModel
         {

@@ -169,30 +169,11 @@
         @RenderBody()
     </main>
 
-    <!-- Alt Bilgi (Footer) - Sadeleştirilmiş, İletişim ve Gizlilik kaldırıldı -->
-    <footer class="fc-footer">
+    <!-- Alt Bilgi (Footer) - Sadece Proje Adı -->
+    <footer class="fc-footer py-4 text-center">
         <div class="container">
-            <div class="row g-4 justify-content-between align-items-center">
-                <div class="col-md-7">
-                    <h5 class="fw-bold mb-2 text-dark">fixCampus</h5>
-                    <p class="text-muted small mb-0 pe-lg-4">
-                        Üniversite öğrencilerinin sosyal buluşma organize edebileceği, kampüsteki kayıp-buluntu eşyalarını tek noktadan takip edebileceği kampüs ilan portalı.
-                    </p>
-                </div>
-                
-                <div class="col-md-5 text-md-end">
-                    <div class="d-flex flex-wrap gap-3 justify-content-md-end small">
-                        <a asp-controller="Home" asp-action="Index" class="text-muted text-decoration-none">Ana Sayfa</a>
-                        <a asp-controller="Home" asp-action="Radar" class="text-muted text-decoration-none">Sosyal Radar</a>
-                        <a asp-controller="Home" asp-action="LostFound" class="text-muted text-decoration-none">Kayıp & Buluntu</a>
-                        <a asp-controller="Home" asp-action="Ads" class="text-muted text-decoration-none">Tüm İlanlar</a>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="fc-footer-bottom text-center text-muted small mt-4 pt-3 border-top">
-                &copy; 2026 fixCampus &bull; Tüm Hakları Saklıdır.
-            </div>
+            <span class="fw-bold text-dark fs-5">fixCampus</span>
+            <div class="text-muted small mt-1">&copy; 2026 fixCampus &bull; Tüm Hakları Saklıdır.</div>
         </div>
     </footer>
 

@@ -19,10 +19,6 @@ public class RegisterViewModel
     [Display(Name = "Üniversite E-postası")]
     public string Email { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Bölüm / Program seçimi zorunludur.")]
-    [Display(Name = "Bölüm")]
-    public string Department { get; set; } = string.Empty;
-
     [Required(ErrorMessage = "Şifre zorunludur.")]
     [StringLength(100, MinimumLength = 6, ErrorMessage = "Şifreniz en az 6 karakter olmalıdır.")]
     [DataType(DataType.Password)]

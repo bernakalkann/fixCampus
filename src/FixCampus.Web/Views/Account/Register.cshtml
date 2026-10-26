@@ -60,30 +60,6 @@
                             </div>
                         </div>
 
-                        <!-- Bölüm Seçimi -->
-                        <div class="mb-3">
-                            <label asp-for="Department" class="form-label fw-semibold small text-dark"></label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-light border-end-0 text-muted">
-                                    <i class="bi bi-mortarboard"></i>
-                                </span>
-                                <select asp-for="Department" class="form-select border-start-0 ps-0">
-                                    <option value="">Bölümünüzü seçiniz...</option>
-                                    <option value="Bilgisayar Mühendisliği">Bilgisayar Mühendisliği</option>
-                                    <option value="Elektrik-Elektronik Mühendisliği">Elektrik-Elektronik Mühendisliği</option>
-                                    <option value="Yazılım Mühendisliği">Yazılım Mühendisliği</option>
-                                    <option value="Yapay Zeka Mühendisliği">Yapay Zeka Mühendisliği</option>
-                                    <option value="Makine Mühendisliği">Makine Mühendisliği</option>
-                                    <option value="Biyomedikal Mühendisliği">Biyomedikal Mühendisliği</option>
-                                    <option value="Kimya Mühendisliği">Kimya Mühendisliği</option>
-                                    <option value="Fizik Mühendisliği">Fizik Mühendisliği</option>
-                                    <option value="Matematik">Matematik</option>
-                                    <option value="Diğer Bölüm">Diğer Bölüm</option>
-                                </select>
-                            </div>
-                            <span asp-validation-for="Department" class="text-danger small"></span>
-                        </div>
-
                         <!-- Şifre & Şifre Tekrar -->
                         <div class="row g-3 mb-3">
                             <div class="col-md-6">
