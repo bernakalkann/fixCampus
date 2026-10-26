@@ -5,7 +5,6 @@ using FixCampus.Web.OpenApi;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
 using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -29,44 +28,12 @@ builder.Services.AddAuthentication(options =>
     options.AccessDeniedPath = "/Account/AccessDenied";
     options.Cookie.Name = "FixCampus.Auth";
     options.ExpireTimeSpan = TimeSpan.FromDays(7);
-    options.SlidingExpiration = true;
-    options.Events = new CookieAuthenticationEvents
-    {
-        OnValidatePrincipal = async context =>
-        {
-            var idClaim = context.Principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (Guid.TryParse(idClaim, out var userId))
-            {
-                var roleReader = context.HttpContext.RequestServices.GetService<IProfileRoleReader>();
-                if (roleReader != null)
-                {
-                    try
-                    {
-                        var currentRole = await roleReader.ReadAsync(userId, context.HttpContext.RequestAborted);
-                        if (!string.IsNullOrEmpty(currentRole))
-                        {
-                            var existingRole = context.Principal?.FindFirst(ClaimTypes.Role)?.Value;
-                            if (existingRole != currentRole)
-                            {
-                                var identity = (ClaimsIdentity)context.Principal!.Identity!;
-                                var oldClaim = identity.FindFirst(ClaimTypes.Role);
-                                if (oldClaim != null) identity.RemoveClaim(oldClaim);
-                                identity.AddClaim(new Claim(ClaimTypes.Role, currentRole));
-                                context.ShouldRenew = true;
-                            }
-                        }
-                    }
-                    catch
-                    {
-                        // Veritabanı geçici ulaşılamıyorsa çerezi koru
-                    }
-                }
-            }
-        }
-    };
+    options.SlidingExpiration = false;
+    options.EventsType = typeof(SupabaseCookieEvents);
 })
 .AddScheme<AuthenticationSchemeOptions, SupabaseAuthenticationHandler>("Supabase", _ => { });
 
+builder.Services.AddScoped<SupabaseCookieEvents>();
 builder.Services.AddCampusAuthorization();
 builder.Services.AddRateLimiter(options =>
 {

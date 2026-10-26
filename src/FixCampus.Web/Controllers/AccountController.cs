@@ -1,3 +1,4 @@
+using System.Data.Common;
 using System.Globalization;
 using System.Security.Claims;
 using System.Text.Json;
@@ -175,21 +176,6 @@ public class AccountController : Controller
                 fullName = asProp.GetString()?.Trim() ?? "";
             }
 
-            // Gerçek kullanıcı rolünü oku (IProfileRoleReader üzerinden)
-            string role = AppRoles.Student;
-            try
-            {
-                var currentRole = await _roleReader.ReadAsync(userId, HttpContext.RequestAborted);
-                if (!string.IsNullOrEmpty(currentRole))
-                {
-                    role = currentRole;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Kullanıcı rolü okunamadı, varsayılan rol atanıyor.");
-            }
-
             if (HasDatabaseConfigured())
             {
                 try
@@ -228,6 +214,25 @@ public class AccountController : Controller
                 fullName = userEmail.Split('@')[0];
             }
 
+            // Read after profile creation; never start a session with an unverified role.
+            string? role;
+            try
+            {
+                role = await _roleReader.ReadAsync(userId, HttpContext.RequestAborted);
+            }
+            catch (Exception ex) when (ex is DbException or TimeoutException or InvalidOperationException ||
+                (ex is OperationCanceledException && !HttpContext.RequestAborted.IsCancellationRequested))
+            {
+                _logger.LogWarning("Giriş sırasında kullanıcı rolü doğrulanamadı.");
+                ModelState.AddModelError(string.Empty, "Profil yetkiniz doğrulanamadı. Bağlantınızı kontrol edip tekrar deneyiniz.");
+                return View(model);
+            }
+            if (role is not (AppRoles.Student or AppRoles.Administrator))
+            {
+                ModelState.AddModelError(string.Empty, "Geçerli bir öğrenci veya yönetici profili bulunamadı.");
+                return View(model);
+            }
+
             // Yönetici sekmesinden giriş yapıldıysa rol kontrolü:
             // Sadece DB'deki rolü 'Yonetici' olan kullanıcılar yönetici sekmesinden giriş yapabilir veya panele erişebilir.
             if (model.UserType == "admin" && role != AppRoles.Administrator)
@@ -254,9 +259,7 @@ public class AccountController : Controller
             var authProperties = new AuthenticationProperties
             {
                 IsPersistent = model.RememberMe,
-                ExpiresUtc = model.RememberMe
-                    ? DateTimeOffset.UtcNow.AddDays(7)
-                    : DateTimeOffset.UtcNow.AddSeconds(expiresIn > 0 ? expiresIn : 3600)
+                ExpiresUtc = DateTimeOffset.UtcNow.AddSeconds(expiresIn > 0 ? expiresIn : 3600)
             };
 
             // Supabase erişim ve yenileme token'larını korumalı çerez özelliklerinde sakla

@@ -47,9 +47,10 @@ builder.Services.AddControllers().AddApplicationPart(typeof(AccessController).As
 builder.Services.AddSingleton(new SupabaseAuthClient(new HttpClient(new TestAuthTransport()), builder.Configuration));
 // Match the web app: MVC uses cookies; API endpoints must explicitly use Bearer.
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-    .AddCookie()
+    .AddCookie(options => options.EventsType = typeof(SupabaseCookieEvents))
     .AddScheme<AuthenticationSchemeOptions, SupabaseAuthenticationHandler>("Supabase", _ => { });
 builder.Services.AddRateLimiter(options => options.AddPolicy("auth", _ => RateLimitPartition.GetNoLimiter("auth-checks")));
+builder.Services.AddScoped<SupabaseCookieEvents>();
 builder.Services.AddCampusAuthorization();
 builder.Services.Replace(ServiceDescriptor.Singleton<IProfileRoleReader>(roleStore));
 await using var app = builder.Build();
@@ -71,6 +72,8 @@ app.MapOpenApi();
 app.MapGet("/auth-only", () => Results.Ok())
     .RequireAuthorization(new AuthorizeAttribute { AuthenticationSchemes = "Supabase" });
 app.MapGet("/web-only", () => Results.Ok()).RequireAuthorization();
+app.MapGet("/web-admin", () => Results.Ok())
+    .RequireAuthorization(new AuthorizeAttribute { Roles = AppRoles.Administrator });
 await app.StartAsync();
 try
 {
@@ -78,10 +81,18 @@ try
     using var http = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false }) { BaseAddress = new Uri(address) };
     var cookieOptions = app.Services.GetRequiredService<IOptionsMonitor<CookieAuthenticationOptions>>()
         .Get(CookieAuthenticationDefaults.AuthenticationScheme);
-    var cookieTicket = new AuthenticationTicket(new ClaimsPrincipal(new ClaimsIdentity(
-        new[] { new Claim(ClaimTypes.NameIdentifier, TestRoleStore.StudentId.ToString()) },
-        CookieAuthenticationDefaults.AuthenticationScheme)), CookieAuthenticationDefaults.AuthenticationScheme);
-    var webCookie = cookieOptions.Cookie.Name + "=" + cookieOptions.TicketDataFormat.Protect(cookieTicket);
+    string Cookie(Guid userId, string? token, string role)
+    {
+        var properties = new AuthenticationProperties();
+        if (token is not null) properties.StoreTokens(new[] { new AuthenticationToken { Name = "access_token", Value = token } });
+        var identity = new ClaimsIdentity(new[] {
+            new Claim(ClaimTypes.NameIdentifier, userId.ToString()), new Claim(ClaimTypes.Role, role)
+        }, CookieAuthenticationDefaults.AuthenticationScheme);
+        var ticket = new AuthenticationTicket(new ClaimsPrincipal(identity), properties, CookieAuthenticationDefaults.AuthenticationScheme);
+        return cookieOptions.Cookie.Name + "=" + cookieOptions.TicketDataFormat.Protect(ticket);
+    }
+    var webCookie = Cookie(TestRoleStore.StudentId, "student", AppRoles.Student);
+    var adminCookie = Cookie(TestRoleStore.AdminId, "admin", AppRoles.Administrator);
     var count = 0;
     async Task Check(string path, string? token, HttpStatusCode expected, string? expectedRole = null, bool forgedHeaders = false, string? cookie = null, HttpMethod? method = null)
     {
@@ -142,6 +153,27 @@ try
     await Check("/api/auth/cikis", "student", HttpStatusCode.NoContent, method: HttpMethod.Post);
     await Check("/web-only", null, HttpStatusCode.Redirect);
     await Check("/web-only", null, HttpStatusCode.OK, cookie: webCookie);
+    await Check("/web-admin", null, HttpStatusCode.OK, cookie: adminCookie);
+    roleStore.Unavailable = true;
+    await Check("/web-admin", null, HttpStatusCode.Redirect, cookie: adminCookie);
+    roleStore.Unavailable = false;
+    roleStore.AdminRole = AppRoles.Student;
+    await Check("/web-admin", null, HttpStatusCode.Redirect, cookie: adminCookie);
+    roleStore.AdminRole = AppRoles.Administrator;
+    await Check("/web-admin", null, HttpStatusCode.Redirect,
+        cookie: Cookie(Guid.Parse("33333333-3333-4333-8333-333333333333"), "missing-profile", AppRoles.Administrator));
+    await Check("/web-only", null, HttpStatusCode.Redirect,
+        cookie: Cookie(Guid.Parse("44444444-4444-4444-8444-444444444444"), "unknown-role", AppRoles.Student));
+    await Check("/web-only", null, HttpStatusCode.Redirect,
+        cookie: Cookie(TestRoleStore.StudentId, null, AppRoles.Student));
+    await Check("/web-only", null, HttpStatusCode.Redirect,
+        cookie: Cookie(TestRoleStore.StudentId, "expired-token", AppRoles.Student));
+    await Check("/web-admin", null, HttpStatusCode.Redirect,
+        cookie: Cookie(TestRoleStore.AdminId, "student", AppRoles.Administrator));
+    await Check("/web-admin", null, HttpStatusCode.Redirect,
+        cookie: Cookie(TestRoleStore.AdminId, "auth-unavailable", AppRoles.Administrator));
+    await Check("/web-admin", null, HttpStatusCode.Redirect,
+        cookie: Cookie(TestRoleStore.StudentId, "student", AppRoles.Administrator));
     using var document = JsonDocument.Parse(await http.GetStringAsync("/openapi/v1.json"));
     var root = document.RootElement;
     if (root.GetProperty("components").GetProperty("securitySchemes").GetProperty("Bearer").GetProperty("scheme").GetString() != "bearer")
