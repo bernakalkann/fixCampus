@@ -1,0 +1,172 @@
+@model FixCampus.Web.Models.Account.ProfileViewModel
+@{
+    ViewData["Title"] = "Profilim";
+}
+
+<div class="container py-4">
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success border-0 shadow-sm rounded-4 mb-4 d-flex align-items-center gap-2" role="alert">
+            <i class="bi bi-check-circle-fill fs-5 text-success"></i>
+            <div>@TempData["SuccessMessage"]</div>
+        </div>
+    }
+
+    <!-- Profil Başlık Kartı -->
+    <div class="card border rounded-4 shadow-sm bg-white overflow-hidden mb-4">
+        <div class="p-4 p-md-5">
+            <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="d-flex align-items-center justify-content-center rounded-circle bg-dark text-white fw-bold fs-3 shadow-sm" style="width: 72px; height: 72px;">
+                        @(string.IsNullOrEmpty(Model.FullName) ? "U" : Model.FullName[0].ToString().ToUpper())
+                    </div>
+                    <div>
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <h3 class="fw-bold text-dark mb-0">@Model.FullName</h3>
+                            <span class="badge @(Model.Role == "Yonetici" ? "bg-danger" : "bg-primary") rounded-pill px-3 py-1">
+                                @(Model.Role == "Yonetici" ? "Yönetici" : "Öğrenci")
+                            </span>
+                        </div>
+                        <p class="text-muted small mb-0">
+                            <span class="me-3"><i class="bi bi-card-text me-1"></i> @Model.StudentNo</span>
+                            <span class="me-3"><i class="bi bi-mortarboard me-1"></i> @(string.IsNullOrWhiteSpace(Model.Department) ? "Bölüm Belirtilmedi" : Model.Department)</span>
+                            <span><i class="bi bi-calendar3 me-1"></i> Üyelik: @Model.MemberSince</span>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <a asp-controller="Home" asp-action="Ads" class="btn btn-outline-dark btn-sm rounded-3 px-3">
+                        <i class="bi bi-collection me-1"></i> Tüm İlanlar
+                    </a>
+                    <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-light border text-danger btn-sm rounded-3 px-3">
+                            <i class="bi bi-box-arrow-right me-1"></i> Çıkış Yap
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- İstatistik Şeridi -->
+        <div class="border-top bg-light p-3 p-md-4">
+            <div class="row g-3 text-center">
+                <div class="col-4">
+                    <div class="p-2">
+                        <span class="text-muted small d-block mb-1">Aktif İlanlarım</span>
+                        <strong class="fs-4 text-dark">@Model.ActiveListingsCount</strong>
+                    </div>
+                </div>
+                <div class="col-4 border-start border-end">
+                    <div class="p-2">
+                        <span class="text-muted small d-block mb-1">Katıldığım Buluşmalar</span>
+                        <strong class="fs-4 text-dark">@Model.JoinedMeetupsCount</strong>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="p-2">
+                        <span class="text-muted small d-block mb-1">Kayıp / Buluntu</span>
+                        <strong class="fs-4 text-dark">@Model.SolvedLostFoundCount</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alt Düzenleme Alanları -->
+    <div class="row g-4">
+        <!-- Sol: Profil Bilgilerini Güncelle -->
+        <div class="col-lg-7">
+            <div class="card border rounded-4 shadow-sm bg-white h-100">
+                <div class="card-header bg-white border-bottom py-3">
+                    <h5 class="fw-bold text-dark mb-0">
+                        <i class="bi bi-person-gear text-dark me-2"></i> Profil Bilgilerini Düzenle
+                    </h5>
+                </div>
+                <div class="card-body p-4">
+                    <form asp-action="Profile" method="post" novalidate>
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" asp-for="Role" />
+                        <input type="hidden" asp-for="StudentNo" />
+                        <input type="hidden" asp-for="Email" />
+
+                        <div class="mb-3">
+                            <label asp-for="FullName" class="form-label fw-semibold small text-dark"></label>
+                            <input asp-for="FullName" class="form-control" />
+                            <span asp-validation-for="FullName" class="text-danger small"></span>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold small text-muted">Öğrenci Numarası</label>
+                                <input type="text" class="form-control bg-light" value="@Model.StudentNo" disabled readonly />
+                                <small class="text-muted" style="font-size: 0.75rem;">Öğrenci no değiştirilemez.</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold small text-muted">E-posta Adresi</label>
+                                <input type="text" class="form-control bg-light" value="@Model.Email" disabled readonly />
+                                <small class="text-muted" style="font-size: 0.75rem;">Üniversite e-postası sabittir.</small>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label asp-for="Department" class="form-label fw-semibold small text-dark"></label>
+                            <input asp-for="Department" class="form-control" placeholder="Bölümünüz (örn: Bilgisayar Mühendisliği)" />
+                            <span asp-validation-for="Department" class="text-danger small"></span>
+                        </div>
+
+                        <button type="submit" class="btn btn-dark rounded-3 px-4 fw-semibold">
+                            Değişiklikleri Kaydet
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sağ: Güvenlik & Hızlı İşlemler -->
+        <div class="col-lg-5">
+            <div class="card border rounded-4 shadow-sm bg-white mb-4">
+                <div class="card-header bg-white border-bottom py-3">
+                    <h5 class="fw-bold text-dark mb-0">
+                        <i class="bi bi-shield-check text-dark me-2"></i> Hesap Güvenliği
+                    </h5>
+                </div>
+                <div class="card-body p-4">
+                    <p class="text-muted small mb-3">
+                        Hesabınız üniversite tek oturum doğrulama kurallarıyla korunmaktadır.
+                    </p>
+                    <div class="p-3 bg-light rounded-3 border mb-3">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <strong class="small d-block text-dark">Şifre Durumu</strong>
+                                <span class="text-muted" style="font-size: 0.78rem;">Son güncelleme: Ekim 2026</span>
+                            </div>
+                            <span class="badge bg-success-subtle text-success border">Güvenli</span>
+                        </div>
+                    </div>
+
+                    <a asp-action="ForgotPassword" class="btn btn-outline-secondary btn-sm w-100 rounded-3">
+                        Şifre Değiştirme Talebi Gönder
+                    </a>
+                </div>
+            </div>
+
+            <!-- Yardım & Topluluk Kuralları -->
+            <div class="p-4 bg-light rounded-4 border">
+                <h6 class="fw-bold text-dark mb-2"><i class="bi bi-info-circle me-1"></i> Kampüs İlan Kuralları</h6>
+                <ul class="text-muted small mb-0 ps-3">
+                    <li class="mb-1">Sosyal Radar buluşmalarında kampüs içi alanları tercih ediniz.</li>
+                    <li class="mb-1">Kayıp ve buluntu eşyaları net bilgilerle ilan ediniz.</li>
+                    <li>Uygunsuz ilanları her ilanın altındaki bildir butonuyla iletebilirsiniz.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

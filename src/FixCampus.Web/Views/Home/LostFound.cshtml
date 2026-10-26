@@ -1,43 +1,194 @@
 @{
-    ViewData["Title"] = "Kayıp & Buluntu";
+    ViewData["Title"] = "Kayıp & Buluntu Eşya";
 }
 
 <div class="container py-4">
-    <!-- Sayfa Açıklaması ve Kapsam Bilgisi -->
-    <div class="p-4 mb-4 rounded-4 bg-white border shadow-sm">
-        <span class="badge bg-light text-dark border mb-2">Kayıp & Buluntu Modülü</span>
-        <h2 class="fw-bold text-dark mb-2">Kayıp ve Buluntu Eşya Ekranı</h2>
-        <p class="text-secondary mb-2">
-            <strong>Modülün Amacı:</strong> Kampüs içinde kaybedilen ya da sahipsiz olarak bulunan eşyaların duyurulması, sahibine güvenle ulaştırılması ve sürecin takip edilmesidir.
-        </p>
-        <p class="text-muted small mb-0">
-            <strong>Planlanan İşlevler:</strong> Kullanıcılar <em>"Kaybettim"</em> veya <em>"Buldum"</em> etiketiyle ilan verebilecek; isteğe bağlı tek fotoğraf yükleyebilecektir. Eşyası teslim edilenler ilanı <em>"Çözüldü"</em> olarak güncelleyebilecektir.
-        </p>
+
+    <!-- Sayfa Başlığı (Sade, Açıklama Kutusu Kaldırıldı) -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold text-dark mb-1">Kayıp & Buluntu Eşya</h2>
+            <p class="text-muted small mb-0">Kampüste kaybedilen ya da sahipsiz bulunan eşyaların takip ve teslim alanı.</p>
+        </div>
+        <div>
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+                <button type="button" class="btn btn-dark btn-sm rounded-3 px-3 py-2 fw-semibold" data-bs-toggle="modal" data-bs-target="#newLostFoundModal">
+                    <i class="bi bi-plus-circle me-1"></i> Eşya İlanı Ver
+                </button>
+            }
+            else
+            {
+                <a asp-controller="Account" asp-action="Login" asp-route-returnUrl="/Home/LostFound" class="btn btn-dark btn-sm rounded-3 px-3 py-2 fw-semibold">
+                    <i class="bi bi-box-arrow-in-right me-1"></i> İlan Vermek İçin Giriş Yap
+                </a>
+            }
+        </div>
     </div>
 
-    <!-- Etiket ve Arama İskeleti -->
+    <!-- Etiket ve Arama Çubuğu -->
     <div class="card border rounded-4 p-3 mb-4 bg-white shadow-sm">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
-            <div class="btn-group" role="group">
-                <button type="button" class="btn btn-dark active btn-sm">Tüm İlanlar</button>
-                <button type="button" class="btn btn-outline-dark btn-sm">Kaybettim Etiketliler</button>
-                <button type="button" class="btn btn-outline-dark btn-sm">Buldum Etiketliler</button>
-                <button type="button" class="btn btn-outline-dark btn-sm">Çözülenler</button>
+            <div class="btn-group btn-group-sm" role="group">
+                <button type="button" class="btn btn-dark active" onclick="filterLF('all', this)">Tüm İlanlar</button>
+                <button type="button" class="btn btn-outline-dark" onclick="filterLF('lost', this)">Kaybettim</button>
+                <button type="button" class="btn btn-outline-dark" onclick="filterLF('found', this)">Buldum</button>
+                <button type="button" class="btn btn-outline-dark" onclick="filterLF('solved', this)">Çözülenler</button>
             </div>
-            <div style="min-width: 250px;">
-                <input type="text" class="form-control form-control-sm" placeholder="Eşya adı veya bulunduğu yer..." disabled />
+            <div style="min-width: 260px;" class="flex-grow-1 flex-md-grow-0">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                    <input type="text" id="lfSearch" class="form-control border-start-0" placeholder="Eşya adı veya yer ara..." onkeyup="filterLFCards()" />
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Yeni İlan Açma Form İskeleti -->
-    <div class="card border border-dashed rounded-4 p-5 d-flex flex-column justify-content-center align-items-center text-center bg-light">
-        <h5 class="fw-bold text-dark mb-2">Kayıp / Buluntu İlan Açma Formu</h5>
-        <p class="text-muted small mb-3" style="max-width: 480px;">
-            Öğrenciler burada eşya başlığı, detaylı açıklama, "Kaybettim/Buldum" etiketi, kampüs konumu ve isteğe bağlı tek fotoğraf ekleyerek ilan paylaşabilecektir.
-        </p>
-        <button class="btn btn-outline-dark btn-sm px-4">
-            Yeni İlan Formu Alanı
-        </button>
+    <!-- İlan Kartları Grid -->
+    <div class="row g-4" id="lfCardsGrid">
+        <!-- Eşya 1: Kayıp -->
+        <div class="col-md-6 col-lg-4 lf-card" data-status="lost">
+            <div class="card border rounded-4 shadow-sm bg-white p-4 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="badge bg-light text-danger border">Kaybettim</span>
+                    <span class="text-muted small"><i class="bi bi-clock me-1"></i> Bugün 13:15</span>
+                </div>
+                <h5 class="fw-bold text-dark mb-1">Mavi Çelik Su Matarası</h5>
+                <p class="text-muted small mb-2"><i class="bi bi-geo-alt me-1"></i> Yemekhane C Blok Çıkışı</p>
+                <p class="text-secondary small mb-3">Üzerinde yazılım kulübü çıkartması var. Görenlerin haber vermesi rica olunur.</p>
+                <div class="d-flex justify-content-between align-items-center pt-3 border-top mt-auto">
+                    <span class="small text-muted"><i class="bi bi-person me-1"></i> Zeynep T.</span>
+                    <button type="button" class="btn btn-sm btn-dark rounded-pill px-3" onclick="alert('İlan sahibi Zeynep T. ile iletişim bilgisi: zeynep.t@ogrenci.ankara.edu.tr')">
+                        <i class="bi bi-chat-dots me-1"></i> İletişime Geç
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Eşya 2: Bulundu -->
+        <div class="col-md-6 col-lg-4 lf-card" data-status="found">
+            <div class="card border rounded-4 shadow-sm bg-white p-4 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="badge bg-light text-success border">Buldum</span>
+                    <span class="text-muted small"><i class="bi bi-clock me-1"></i> Dün 17:00</span>
+                </div>
+                <h5 class="fw-bold text-dark mb-1">SanDisk 64GB USB Bellek</h5>
+                <p class="text-muted small mb-2"><i class="bi bi-geo-alt me-1"></i> Merkezi Derslik C-102</p>
+                <p class="text-secondary small mb-3">Derslik projeksiyon masasında unutulmuş. Güvenlik birimine teslim edildi.</p>
+                <div class="d-flex justify-content-between align-items-center pt-3 border-top mt-auto">
+                    <span class="badge bg-success-subtle text-success border">Güvenlikte</span>
+                    <button type="button" class="btn btn-sm btn-outline-dark rounded-pill px-3" onclick="alert('Eşya Kampüs Güvenlik Amirliğine teslim edilmiştir. Öğrenci kimliğinizle başvurabilirsiniz.')">
+                        Teslim Bilgisi
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Eşya 3: Çözüldü -->
+        <div class="col-md-6 col-lg-4 lf-card" data-status="solved">
+            <div class="card border rounded-4 shadow-sm bg-light p-4 h-100 opacity-75">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="badge bg-secondary text-white">Çözüldü &bull; Sahibine Ulaştı</span>
+                    <span class="text-muted small"><i class="bi bi-check2-circle me-1"></i> Teslim Edildi</span>
+                </div>
+                <h5 class="fw-bold text-dark mb-1 text-decoration-line-through">Siyah HP Laptop Şarj Cihazı</h5>
+                <p class="text-muted small mb-2"><i class="bi bi-geo-alt me-1"></i> Kütüphane 1. Kat</p>
+                <p class="text-secondary small mb-3">İlan sahibi eşyasını teslim almıştır. Dayanışma gösteren öğrencilere teşekkür ederiz.</p>
+                <div class="d-flex justify-content-between align-items-center pt-3 border-top mt-auto">
+                    <span class="small text-muted">22 Ekim 2026</span>
+                    <span class="badge bg-white text-muted border">Arşivlendi</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Yeni Kayıp/Buluntu İlanı Modalı -->
+<div class="modal fade" id="newLostFoundModal" tabindex="-1" aria-labelledby="newLostFoundModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-bottom p-4">
+                <h5 class="modal-title fw-bold text-dark" id="newLostFoundModalLabel">Yeni Eşya İlanı</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="lfForm" onsubmit="event.preventDefault(); alert('Eşya ilanınız başarıyla yayınlandı.'); location.reload();">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-dark">İlan Türü</label>
+                        <div class="d-flex gap-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="lfType" id="typeLost" checked>
+                                <label class="form-check-label text-dark small" for="typeLost">
+                                    Eşyamı Kaybettim
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="lfType" id="typeFound">
+                                <label class="form-check-label text-dark small" for="typeFound">
+                                    Sahipsiz Eşya Buldum
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-dark">Eşya Başlığı</label>
+                        <input type="text" class="form-control" placeholder="Örn: Siyah Sırt Çantası" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-dark">Kampüs Konumu / Yeri</label>
+                        <input type="text" class="form-control" placeholder="Örn: Yemekhane veya Kütüphane" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-dark">Detaylı Açıklama</label>
+                        <textarea class="form-control" rows="3" placeholder="Eşyanın ayırt edici özellikleri..."></textarea>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label small fw-semibold text-dark">İsteğe Bağlı Fotoğraf (Storage)</label>
+                        <input type="file" class="form-control form-control-sm" accept="image/*" />
+                        <small class="text-muted" style="font-size: 0.72rem;">Yalnızca tek fotoğraf yüklenebilir (Maks. 5MB).</small>
+                    </div>
+                    <button type="submit" class="btn btn-dark w-100 py-2 rounded-3 fw-semibold">
+                        İlanı Yayınla
+                    </button>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        function filterLF(status, btn) {
+            const buttons = btn.parentElement.querySelectorAll('button');
+            buttons.forEach(b => {
+                b.classList.remove('btn-dark', 'active');
+                b.classList.add('btn-outline-dark');
+            });
+            btn.classList.add('btn-dark', 'active');
+            btn.classList.remove('btn-outline-dark');
+
+            const cards = document.querySelectorAll('.lf-card');
+            cards.forEach(card => {
+                if (status === 'all' || card.getAttribute('data-status') === status) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        function filterLFCards() {
+            const query = document.getElementById('lfSearch').value.toLowerCase();
+            const cards = document.querySelectorAll('.lf-card');
+            cards.forEach(card => {
+                const text = card.innerText.toLowerCase();
+                if (!query || text.includes(query)) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+    </script>
+}

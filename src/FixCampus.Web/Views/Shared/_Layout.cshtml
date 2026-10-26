@@ -30,91 +30,154 @@
                 </button>
                 
                 <div class="collapse navbar-collapse" id="navbarContent">
-                    <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-3">
-                        <li class="nav-item">
-                            <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "Index" && ViewContext.RouteData.Values["Controller"]?.ToString() == "Home" ? "active" : "")" 
-                               asp-area="" asp-controller="Home" asp-action="Index">
-                                Ana Sayfa
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "Radar" ? "active" : "")" 
-                               asp-area="" asp-controller="Home" asp-action="Radar">
-                                Sosyal Radar
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "LostFound" ? "active" : "")" 
-                               asp-area="" asp-controller="Home" asp-action="LostFound">
-                                Kayıp & Buluntu
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "Ads" ? "active" : "")" 
-                               asp-area="" asp-controller="Home" asp-action="Ads">
-                                Tüm İlanlar
-                            </a>
-                        </li>
-                    </ul>
-                    
-                    <!-- Filtreleme ve Arama Çubuğu -->
-                    <form asp-controller="Home" asp-action="Ads" method="get" class="fc-nav-filter my-2 my-lg-0 me-lg-3">
-                        <div class="input-group input-group-sm">
-                            <select name="type" class="form-select form-select-sm" style="max-width: 135px; font-size: 0.82rem; font-weight: 500;">
-                                <option value="">Tüm İlanlar</option>
-                                <option value="radar" selected="@(Context.Request.Query["type"] == "radar")">Sosyal Radar</option>
-                                <option value="lost" selected="@(Context.Request.Query["type"] == "lost")">Kayıp Eşya</option>
-                                <option value="found" selected="@(Context.Request.Query["type"] == "found")">Buluntu Eşya</option>
-                            </select>
-                            <input type="text" name="search" value="@Context.Request.Query["search"]" class="form-control form-control-sm" placeholder="İlanlarda ara..." style="min-width: 140px; max-width: 200px; font-size: 0.82rem;" />
-                            <button class="btn btn-sm" type="submit" title="Filtrele">
-                                <i class="bi bi-search"></i>
-                            </button>
-                        </div>
-                    </form>
+                    @if (User.Identity?.IsAuthenticated == true)
+                    {
+                        <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-3">
+                            <li class="nav-item">
+                                <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "Index" && ViewContext.RouteData.Values["Controller"]?.ToString() == "Home" ? "active" : "")" 
+                                   asp-area="" asp-controller="Home" asp-action="Index">
+                                    Ana Sayfa
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "Radar" ? "active" : "")" 
+                                   asp-area="" asp-controller="Home" asp-action="Radar">
+                                    Sosyal Radar
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "LostFound" ? "active" : "")" 
+                                   asp-area="" asp-controller="Home" asp-action="LostFound">
+                                    Kayıp & Buluntu
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "Ads" ? "active" : "")" 
+                                   asp-area="" asp-controller="Home" asp-action="Ads">
+                                    Tüm İlanlar
+                                </a>
+                            </li>
+                        </ul>
+                        
+                        <!-- Filtreleme ve Arama Çubuğu -->
+                        <form asp-controller="Home" asp-action="Ads" method="get" class="fc-nav-filter my-2 my-lg-0 me-lg-3">
+                            <div class="input-group input-group-sm">
+                                <select name="type" class="form-select form-select-sm" style="max-width: 135px; font-size: 0.82rem; font-weight: 500;">
+                                    <option value="">Tüm İlanlar</option>
+                                    <option value="radar" selected="@(Context.Request.Query["type"] == "radar")">Sosyal Radar</option>
+                                    <option value="lost" selected="@(Context.Request.Query["type"] == "lost")">Kayıp Eşya</option>
+                                    <option value="found" selected="@(Context.Request.Query["type"] == "found")">Buluntu Eşya</option>
+                                </select>
+                                <input type="text" name="search" value="@Context.Request.Query["search"]" class="form-control form-control-sm" placeholder="İlanlarda ara..." style="min-width: 140px; max-width: 200px; font-size: 0.82rem;" />
+                                <button class="btn btn-sm" type="submit" title="Filtrele">
+                                    <i class="bi bi-search"></i>
+                                </button>
+                            </div>
+                        </form>
+                    }
+                    else
+                    {
+                        <div class="me-auto"></div>
+                    }
 
                     <div class="d-flex align-items-center gap-2">
-                        <a href="javascript:void(0)" class="btn btn-dark btn-sm px-3">
-                            İlan Ver
-                        </a>
-                        <a href="javascript:void(0)" class="btn btn-outline-dark btn-sm px-3">
-                            Giriş Yap
-                        </a>
+                        @if (User.Identity?.IsAuthenticated == true)
+                        {
+                            @if (User.IsInRole("Yonetici"))
+                            {
+                                <a asp-controller="Admin" asp-action="Index" class="btn btn-outline-danger btn-sm px-3">
+                                    <i class="bi bi-shield-lock me-1"></i> Yönetici Paneli
+                                </a>
+                            }
+
+                            <a asp-controller="Home" asp-action="Ads" class="btn btn-dark btn-sm px-3">
+                                İlan Ver
+                            </a>
+
+                            <div class="dropdown">
+                                <button class="btn btn-outline-dark btn-sm px-3 dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="bi bi-person-circle"></i>
+                                    <span class="d-none d-sm-inline">@User.Identity.Name</span>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end shadow-sm border rounded-3 mt-2">
+                                    <li class="px-3 py-2 border-bottom">
+                                        <div class="fw-semibold small text-dark">@User.Identity.Name</div>
+                                        <div class="text-muted" style="font-size: 0.75rem;">@User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Email)?.Value</div>
+                                    </li>
+                                    @if (User.IsInRole("Yonetici"))
+                                    {
+                                        <li>
+                                            <a class="dropdown-item py-2 small d-flex align-items-center gap-2 text-danger fw-semibold" asp-controller="Admin" asp-action="Index">
+                                                <i class="bi bi-shield-lock text-danger"></i> Yönetici Paneli
+                                            </a>
+                                        </li>
+                                    }
+                                    <li>
+                                        <a class="dropdown-item py-2 small d-flex align-items-center gap-2" asp-controller="Account" asp-action="Profile">
+                                            <i class="bi bi-person text-muted"></i> Profilim
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item py-2 small d-flex align-items-center gap-2" asp-controller="Home" asp-action="Ads">
+                                            <i class="bi bi-collection text-muted"></i> İlanlarım
+                                        </a>
+                                    </li>
+                                    <li><hr class="dropdown-divider my-1"></li>
+                                    <li>
+                                        <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline w-100">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="dropdown-item py-2 small text-danger d-flex align-items-center gap-2">
+                                                <i class="bi bi-box-arrow-right"></i> Çıkış Yap
+                                            </button>
+                                        </form>
+                                    </li>
+                                </ul>
+                            </div>
+                        }
+                        else
+                        {
+                            <a asp-controller="Account" asp-action="Login" class="btn btn-dark btn-sm px-3">
+                                Giriş Yap
+                            </a>
+                            <a asp-controller="Account" asp-action="Register" class="btn btn-outline-dark btn-sm px-3">
+                                Kayıt Ol
+                            </a>
+                        }
                     </div>
                 </div>
             </div>
         </nav>
     </header>
 
+    @if (TempData["SuccessMessage"] != null && ViewContext.RouteData.Values["Controller"]?.ToString() != "Account")
+    {
+        <div class="container mt-3">
+            <div class="alert alert-success border-0 shadow-sm rounded-4 d-flex align-items-center gap-2" role="alert">
+                <i class="bi bi-check-circle-fill fs-5 text-success"></i>
+                <div>@TempData["SuccessMessage"]</div>
+            </div>
+        </div>
+    }
+    @if (TempData["InfoMessage"] != null && ViewContext.RouteData.Values["Controller"]?.ToString() != "Account")
+    {
+        <div class="container mt-3">
+            <div class="alert alert-secondary border-0 shadow-sm rounded-4 d-flex align-items-center gap-2" role="alert">
+                <i class="bi bi-info-circle-fill fs-5 text-secondary"></i>
+                <div>@TempData["InfoMessage"]</div>
+            </div>
+        </div>
+    }
+
     <!-- Ana İçerik -->
     <main role="main">
         @RenderBody()
     </main>
 
-    <!-- Alt Bilgi (Footer) - Sadeleştirilmiş, İletişim ve Gizlilik kaldırıldı -->
-    <footer class="fc-footer">
+    <!-- Alt Bilgi (Footer) - Sadece Proje Adı -->
+    <footer class="fc-footer py-4 text-center">
         <div class="container">
-            <div class="row g-4 justify-content-between align-items-center">
-                <div class="col-md-7">
-                    <h5 class="fw-bold mb-2 text-dark">fixCampus</h5>
-                    <p class="text-muted small mb-0 pe-lg-4">
-                        Üniversite öğrencilerinin sosyal buluşma organize edebileceği, kampüsteki kayıp-buluntu eşyalarını tek noktadan takip edebileceği kampüs ilan portalı.
-                    </p>
-                </div>
-                
-                <div class="col-md-5 text-md-end">
-                    <div class="d-flex flex-wrap gap-3 justify-content-md-end small">
-                        <a asp-controller="Home" asp-action="Index" class="text-muted text-decoration-none">Ana Sayfa</a>
-                        <a asp-controller="Home" asp-action="Radar" class="text-muted text-decoration-none">Sosyal Radar</a>
-                        <a asp-controller="Home" asp-action="LostFound" class="text-muted text-decoration-none">Kayıp & Buluntu</a>
-                        <a asp-controller="Home" asp-action="Ads" class="text-muted text-decoration-none">Tüm İlanlar</a>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="fc-footer-bottom text-center text-muted small mt-4 pt-3 border-top">
-                &copy; 2026 fixCampus &bull; Tüm Hakları Saklıdır.
-            </div>
+            <span class="fw-bold text-dark fs-5">fixCampus</span>
+            <div class="text-muted small mt-1">&copy; 2026 fixCampus &bull; Tüm Hakları Saklıdır.</div>
         </div>
     </footer>
 

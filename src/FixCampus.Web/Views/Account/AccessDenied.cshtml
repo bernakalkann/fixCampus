@@ -1,0 +1,27 @@
+@{
+    ViewData["Title"] = "Erişim Yetkisi Yok";
+}
+
+<div class="container py-5 text-center">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card border rounded-4 shadow-sm bg-white p-5">
+                <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-danger-subtle text-danger p-3 mb-3 mx-auto" style="width: 70px; height: 70px;">
+                    <i class="bi bi-shield-x fs-1"></i>
+                </div>
+                <h3 class="fw-bold text-dark mb-2">Yetkisiz Erişim</h3>
+                <p class="text-muted small mb-4">
+                    Bu sayfayı görüntülemek veya bu işlemi gerçekleştirmek için gerekli yetkiye (Rol kontrolü) sahip değilsiniz.
+                </p>
+                <div class="d-flex justify-content-center gap-2">
+                    <a asp-controller="Home" asp-action="Index" class="btn btn-dark rounded-3 px-4 btn-sm">
+                        Ana Sayfaya Dön
+                    </a>
+                    <a asp-controller="Account" asp-action="Profile" class="btn btn-outline-secondary rounded-3 px-4 btn-sm">
+                        Profilim
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

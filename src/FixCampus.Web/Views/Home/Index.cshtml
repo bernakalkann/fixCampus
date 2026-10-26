@@ -1,148 +1,309 @@
 @{
-    ViewData["Title"] = "Ana Sayfa";
+    ViewData["Title"] = "Ana Sayfa - Kampüs İlan Akışı";
 }
 
 <div class="container py-4">
-    <!-- Proje Başlığı ve Genel Tanıtım -->
+
+    <!-- Kampüs Karşılama ve Hızlı Başlık -->
     <div class="p-4 p-md-5 mb-4 rounded-4 bg-white border shadow-sm">
-        <h1 class="display-6 fw-bold text-dark mb-3">fixCampus &bull; Kampüs İlan Platformu</h1>
-        <p class="lead text-secondary mb-3">
-            Bu projede üniversite öğrencilerinin <strong>sosyal buluşma</strong> ve <strong>kayıp-buluntu</strong> ilanlarını paylaşabileceği ortak bir kampüs portalı geliştirilmektedir. Hedef kullanıcılar kampüste birlikte etkinlik yapmak isteyen veya kaybettiği eşyayı arayan öğrencilerdir.
-        </p>
-        <p class="text-muted mb-4 small">
-            Kullanıcılar hesap oluşturup giriş yapabilecek, profilini düzenleyebilecek ve kendi ilanlarını yönetebilecektir.
-        </p>
+        <div class="row align-items-center g-4">
+            <div class="col-lg-8">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <span class="badge bg-dark px-3 py-1 rounded-pill">fixCampus</span>
+                    <span class="text-muted small">&bull; Üniversite Öğrenci Dayanışma & Sosyal Portalı</span>
+                </div>
+                <h1 class="display-6 fw-bold text-dark mb-0">Kampüs İlan & Sosyal Akış</h1>
+            </div>
+            <div class="col-lg-4 text-lg-end">
+                <div class="d-flex flex-wrap gap-2 justify-content-lg-end">
+                    @if (User.Identity?.IsAuthenticated == true)
+                    {
+                        <a asp-controller="Home" asp-action="Radar" class="btn btn-dark btn-sm px-3 py-2 rounded-3">
+                            <i class="bi bi-plus-circle me-1"></i> Buluşma Oluştur
+                        </a>
+                        <a asp-controller="Home" asp-action="LostFound" class="btn btn-outline-dark btn-sm px-3 py-2 rounded-3">
+                            <i class="bi bi-box-seam me-1"></i> Eşya Bildir
+                        </a>
+                    }
+                    else
+                    {
+                        <a asp-controller="Account" asp-action="Login" class="btn btn-dark btn-sm px-3 py-2 rounded-3">
+                            <i class="bi bi-box-arrow-in-right me-1"></i> İlan Vermek İçin Giriş Yap
+                        </a>
+                        <a asp-controller="Account" asp-action="Register" class="btn btn-outline-dark btn-sm px-3 py-2 rounded-3">
+                            Kayıt Ol
+                        </a>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hızlı Akış Filtreleme Hapları (Tabs/Pills) -->
+    <div class="d-flex flex-wrap gap-2 mb-4 align-items-center justify-content-between">
+        <div class="btn-group btn-group-sm" role="group">
+            <button type="button" class="btn btn-dark active px-3 py-2 rounded-start-3" onclick="filterFeed('all', this)">
+                Tüm Akış (5)
+            </button>
+            <button type="button" class="btn btn-outline-dark px-3 py-2" onclick="filterFeed('radar', this)">
+                <i class="bi bi-people me-1"></i> Sosyal Radar (2)
+            </button>
+            <button type="button" class="btn btn-outline-dark px-3 py-2" onclick="filterFeed('lost', this)">
+                <i class="bi bi-search me-1"></i> Kayıp Eşyalar (2)
+            </button>
+            <button type="button" class="btn btn-outline-dark px-3 py-2 rounded-end-3" onclick="filterFeed('found', this)">
+                <i class="bi bi-check2-circle me-1"></i> Bulunanlar (1)
+            </button>
+        </div>
+
+        <div class="d-flex align-items-center gap-2 small text-muted">
+            <span class="d-inline-block rounded-circle bg-success" style="width: 8px; height: 8px;"></span>
+            <span>Canlı Kampüs Akışı</span>
+        </div>
+    </div>
+
+    <!-- Ana 2 Kolonlu Düzen -->
+    <div class="row g-4">
         
-        <div class="d-flex flex-wrap gap-2">
-            <a asp-controller="Home" asp-action="Radar" class="btn btn-outline-dark btn-sm px-3 fw-semibold">
-                Sosyal Radar Sayfası
-            </a>
-            <a asp-controller="Home" asp-action="LostFound" class="btn btn-outline-dark btn-sm px-3 fw-semibold">
-                Kayıp & Buluntu Sayfası
-            </a>
-            <a asp-controller="Home" asp-action="Ads" class="btn btn-outline-dark btn-sm px-3 fw-semibold">
-                İlan Listesi & Arama
-            </a>
+        <!-- Sol Kolon (8 Kolon): İlan Akışı (Feed / Stream) -->
+        <div class="col-lg-8">
+            <div class="d-flex flex-column gap-3" id="feedContainer">
+
+                <!-- İlan 1: Sosyal Radar -->
+                <div class="card border rounded-4 shadow-sm bg-white p-4 feed-card" data-category="radar">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-dark rounded-pill px-3 py-1">Sosyal Radar</span>
+                            <span class="text-muted small"><i class="bi bi-clock me-1"></i> Bugün 16:30</span>
+                        </div>
+                        <span class="badge bg-light text-muted border" style="font-size: 0.75rem;">
+                            <i class="bi bi-geo-alt me-1"></i> Kütüphane 2. Kat
+                        </span>
+                    </div>
+
+                    <h5 class="fw-bold text-dark mb-1">
+                        BLM4581 Ağ Tabanlı Teknolojiler Soru Çözüm Grubu
+                    </h5>
+                    <p class="text-muted small mb-3">
+                        Vize sınavı öncesi çıkmış soruları ve haftalık laboratuvar konularını birlikte çalışmak isteyen arkadaşlar gelebilir. 2. kat grup çalışma odasındayız.
+                    </p>
+
+                    <div class="d-flex flex-wrap justify-content-between align-items-center pt-3 border-top mt-auto gap-2">
+                        <div class="d-flex align-items-center gap-2 small text-muted">
+                            <i class="bi bi-person-check-fill text-success"></i>
+                            <span class="fw-semibold text-dark">4 Öğrenci Geliyor</span>
+                            <span class="text-secondary">&bull; Başlatan: Ahmet K. (Bilgisayar Müh.)</span>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-dark rounded-pill px-3" onclick="toggleJoin(this)">
+                            <i class="bi bi-plus-lg me-1"></i> Geliyorum
+                        </button>
+                    </div>
+                </div>
+
+                <!-- İlan 2: Kayıp Eşya -->
+                <div class="card border rounded-4 shadow-sm bg-white p-4 feed-card" data-category="lost">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-light text-danger border rounded-pill px-3 py-1">Kayıp Eşya</span>
+                            <span class="text-muted small"><i class="bi bi-clock me-1"></i> Bugün 13:15</span>
+                        </div>
+                        <span class="badge bg-light text-muted border" style="font-size: 0.75rem;">
+                            <i class="bi bi-geo-alt me-1"></i> Yemekhane C Blok Çıkışı
+                        </span>
+                    </div>
+
+                    <h5 class="fw-bold text-dark mb-1">
+                        Mavi Çelik Su Matarası (Mühendislik Çıkartmalı)
+                    </h5>
+                    <p class="text-muted small mb-3">
+                        Öğle yemeği sonrasında C blok yemekhane tepsisi bırakma alanında unutulmuştur. Üzerinde yazılım topluluğu çıkartması bulunmaktadır. Görenlerin bildirmesi rica olunur.
+                    </p>
+
+                    <div class="d-flex flex-wrap justify-content-between align-items-center pt-3 border-top mt-auto gap-2">
+                        <div class="d-flex align-items-center gap-2 small text-muted">
+                            <i class="bi bi-person-circle"></i>
+                            <span>İlan Sahibi: Zeynep T.</span>
+                        </div>
+                        <a asp-controller="Home" asp-action="LostFound" class="btn btn-sm btn-dark rounded-pill px-3">
+                            <i class="bi bi-chat-dots me-1"></i> İletişime Geç
+                        </a>
+                    </div>
+                </div>
+
+                <!-- İlan 3: Buluntu Eşya -->
+                <div class="card border rounded-4 shadow-sm bg-white p-4 feed-card" data-category="found">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-light text-success border rounded-pill px-3 py-1">Bulundu</span>
+                            <span class="text-muted small"><i class="bi bi-clock me-1"></i> Dün 17:00</span>
+                        </div>
+                        <span class="badge bg-light text-muted border" style="font-size: 0.75rem;">
+                            <i class="bi bi-geo-alt me-1"></i> Merkezi Derslik C-102
+                        </span>
+                    </div>
+
+                    <h5 class="fw-bold text-dark mb-1">
+                        SanDisk 64GB Siyah USB Bellek
+                    </h5>
+                    <p class="text-muted small mb-3">
+                        Derslik projeksiyon masasının üzerinde unutulmuş olarak bulunmuştur. İçinde ders slaytları var, sahibi kampüs güvenlik danışma biriminden teslim alabilir.
+                    </p>
+
+                    <div class="d-flex flex-wrap justify-content-between align-items-center pt-3 border-top mt-auto gap-2">
+                        <div class="d-flex align-items-center gap-2 small text-muted">
+                            <span class="badge bg-success-subtle text-success border">Güvenlikte Bekliyor</span>
+                        </div>
+                        <a asp-controller="Home" asp-action="LostFound" class="btn btn-sm btn-outline-dark rounded-pill px-3">
+                            Teslim Bilgisi
+                        </a>
+                    </div>
+                </div>
+
+                <!-- İlan 4: Sosyal Radar -->
+                <div class="card border rounded-4 shadow-sm bg-white p-4 feed-card" data-category="radar">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-dark rounded-pill px-3 py-1">Sosyal Radar</span>
+                            <span class="text-muted small"><i class="bi bi-clock me-1"></i> Yarın 19:00</span>
+                        </div>
+                        <span class="badge bg-light text-muted border" style="font-size: 0.75rem;">
+                            <i class="bi bi-geo-alt me-1"></i> Kampüs Spor Tesisleri
+                        </span>
+                    </div>
+
+                    <h5 class="fw-bold text-dark mb-1">
+                        Halı Saha Dostluk Maçı (2 Kişi Eksik)
+                    </h5>
+                    <p class="text-muted small mb-3">
+                        Mühendislik fakültesi öğrencileri arasında düzenlediğimiz 7'ye 7 halı saha maçımız için 2 oyuncu arkadaş arıyoruz. Seviye tamamen eğlence ve dostluk havasında.
+                    </p>
+
+                    <div class="d-flex flex-wrap justify-content-between align-items-center pt-3 border-top mt-auto gap-2">
+                        <div class="d-flex align-items-center gap-2 small text-muted">
+                            <i class="bi bi-person-check-fill text-success"></i>
+                            <span class="fw-semibold text-dark">10 / 12 Kişi</span>
+                            <span class="text-secondary">&bull; Kalan Yer: 2</span>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-dark rounded-pill px-3" onclick="toggleJoin(this)">
+                            <i class="bi bi-plus-lg me-1"></i> Geliyorum
+                        </button>
+                    </div>
+                </div>
+
+                <!-- İlan 5: Kayıp Eşya -->
+                <div class="card border rounded-4 shadow-sm bg-white p-4 feed-card" data-category="lost">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-light text-danger border rounded-pill px-3 py-1">Kayıp Eşya</span>
+                            <span class="text-muted small"><i class="bi bi-clock me-1"></i> 24 Ekim 2026</span>
+                        </div>
+                        <span class="badge bg-light text-muted border" style="font-size: 0.75rem;">
+                            <i class="bi bi-geo-alt me-1"></i> Öğrenci Kafeteryası
+                        </span>
+                    </div>
+
+                    <h5 class="fw-bold text-dark mb-1">
+                        Siyah Deri Kartlık (Öğrenci Kimliği İçinde)
+                    </h5>
+                    <p class="text-muted small mb-3">
+                        İçerisinde Ankara Üniversitesi öğrenci kimlik kartı ve yemekhane kartı bulunmaktadır. Bulan arkadaşların iletişime geçmesi çok önemlidir.
+                    </p>
+
+                    <div class="d-flex flex-wrap justify-content-between align-items-center pt-3 border-top mt-auto gap-2">
+                        <div class="d-flex align-items-center gap-2 small text-muted">
+                            <i class="bi bi-person-circle"></i>
+                            <span>İlan Sahibi: Berke M.</span>
+                        </div>
+                        <a asp-controller="Home" asp-action="LostFound" class="btn btn-sm btn-dark rounded-pill px-3">
+                            <i class="bi bi-chat-dots me-1"></i> İletişime Geç
+                        </a>
+                    </div>
+                </div>
+
+            </div>
         </div>
+
+        <!-- Sağ Kolon (4 Kolon): Kampüs Widget'ları & Hızlı İşlemler -->
+        <div class="col-lg-4">
+            
+            <!-- Widget 1: Hızlı İlan Ver -->
+            <div class="card border rounded-4 shadow-sm bg-white p-4 mb-4">
+                <h5 class="fw-bold text-dark mb-2">
+                    <i class="bi bi-megaphone text-dark me-2"></i> İlan Paylaş
+                </h5>
+                <p class="text-muted small mb-3">
+                    Kampüste bir eşyanı mı kaybettin ya da etkinlik mi düzenliyorsun? Hemen ilan oluştur.
+                </p>
+                <div class="d-grid gap-2">
+                    <a asp-controller="Home" asp-action="Radar" class="btn btn-dark btn-sm rounded-3 py-2 fw-semibold">
+                        <i class="bi bi-people me-1"></i> Sosyal Radar Buluşması Aç
+                    </a>
+                    <a asp-controller="Home" asp-action="LostFound" class="btn btn-outline-dark btn-sm rounded-3 py-2 fw-semibold">
+                        <i class="bi bi-box-seam me-1"></i> Kayıp / Buluntu Bildir
+                    </a>
+                </div>
+            </div>
+
+            <!-- Widget 2: Kampüs İstatistikleri -->
+            <div class="card border rounded-4 shadow-sm bg-white p-4 mb-4">
+                <h6 class="fw-bold text-dark mb-3">
+                    <i class="bi bi-bar-chart-line text-dark me-2"></i> Kampüs Özeti
+                </h6>
+                <div class="d-flex flex-column gap-2 small">
+                    <div class="d-flex justify-content-between align-items-center p-2 rounded-2 bg-light">
+                        <span class="text-secondary">Aktif İlanlar</span>
+                        <strong class="text-dark">48</strong>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center p-2 rounded-2 bg-light">
+                        <span class="text-secondary">Bu Hafta Buluşmalar</span>
+                        <strong class="text-dark">19</strong>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center p-2 rounded-2 bg-light">
+                        <span class="text-secondary">Sahibine Ulaşan Eşyalar</span>
+                        <strong class="text-success fw-bold">32</strong>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
     </div>
 
-    <!-- Planlanan Sayfalar ve Ekran Akışları -->
-    <div class="mb-4">
-        <div class="mb-3">
-            <h3 class="fw-bold text-dark mb-1">Planlanan Sayfalar ve Ekran Akışları</h3>
-            <p class="text-muted small mb-0">Platformda yer alan temel modüllerin ve sayfaların görev tanımları</p>
-        </div>
-
-        <div class="row g-4">
-            <!-- Sayfa 1: Sosyal Radar -->
-            <div class="col-md-6 col-lg-4">
-                <div class="card h-100 border rounded-4 p-4 shadow-sm bg-white">
-                    <span class="badge bg-light text-dark border align-self-start mb-3">Buluşma Modülü</span>
-                    <h5 class="fw-bold text-dark mb-2">Sosyal Radar (Buluşmalar)</h5>
-                    <p class="text-muted small mb-3">
-                        Öğrencilerin buluşma yeri, tarih ve saat bilgisiyle ilan açabileceği alandır. Diğer öğrenciler <em>"Geliyorum"</em> seçeneğiyle katılabilecek veya katılımını geri alabilecektir.
-                    </p>
-                    <div class="bg-light p-3 rounded-3 small mb-3">
-                        <strong class="text-dark">Temel Kurallar:</strong>
-                        <ul class="mb-0 ps-3 mt-1 text-secondary">
-                            <li>Yer, tarih ve saat bilgisi zorunludur.</li>
-                            <li>Süresi geçen buluşmalar aktif akıştan kalkar.</li>
-                            <li>Aynı kullanıcı birden fazla katılamaz.</li>
-                        </ul>
-                    </div>
-                    <div class="mt-auto">
-                        <a asp-controller="Home" asp-action="Radar" class="btn btn-sm btn-outline-dark w-100">
-                            Sayfayı İncele &rarr;
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Sayfa 2: Kayıp & Buluntu -->
-            <div class="col-md-6 col-lg-4">
-                <div class="card h-100 border rounded-4 p-4 shadow-sm bg-white">
-                    <span class="badge bg-light text-dark border align-self-start mb-3">Eşya Bildirimi</span>
-                    <h5 class="fw-bold text-dark mb-2">Kayıp & Buluntu Eşya</h5>
-                    <p class="text-muted small mb-3">
-                        Kampüste kaybedilen veya bulunan eşyaların duyurulduğu alandır. İsteğe bağlı tek fotoğraf ekleme imkanı sunulur ve eşyalar teslim edildiğinde <em>"Çözüldü"</em> olarak işaretlenir.
-                    </p>
-                    <div class="bg-light p-3 rounded-3 small mb-3">
-                        <strong class="text-dark">Temel Kurallar:</strong>
-                        <ul class="mb-0 ps-3 mt-1 text-secondary">
-                            <li>"Kaybettim" veya "Buldum" etiketi seçilir.</li>
-                            <li>Tek fotoğraf desteği sunulur.</li>
-                            <li>Çözülen eşyalar listede arşivlenir.</li>
-                        </ul>
-                    </div>
-                    <div class="mt-auto">
-                        <a asp-controller="Home" asp-action="LostFound" class="btn btn-sm btn-outline-dark w-100">
-                            Sayfayı İncele &rarr;
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Sayfa 3: İlan Listeleme ve Arama -->
-            <div class="col-md-6 col-lg-4">
-                <div class="card h-100 border rounded-4 p-4 shadow-sm bg-white">
-                    <span class="badge bg-light text-dark border align-self-start mb-3">Arama & Filtreleme</span>
-                    <h5 class="fw-bold text-dark mb-2">İlan Arama & Filtreleme</h5>
-                    <p class="text-muted small mb-3">
-                        Tüm aktif ilanların kategoriye, arama metnine ve türe göre filtrelendiği, sayfalandığı ve detaylarına ulaşıldığı ortak listeleme ekranıdır.
-                    </p>
-                    <div class="bg-light p-3 rounded-3 small mb-3">
-                        <strong class="text-dark">Temel Kurallar:</strong>
-                        <ul class="mb-0 ps-3 mt-1 text-secondary">
-                            <li>Kategori ve metin bazlı anlık arama.</li>
-                            <li>Sayfalama desteği.</li>
-                            <li>İlan sahibi için düzenleme/silme yetkisi.</li>
-                        </ul>
-                    </div>
-                    <div class="mt-auto">
-                        <a asp-controller="Home" asp-action="Ads" class="btn btn-sm btn-outline-dark w-100">
-                            Sayfayı İncele &rarr;
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Sayfa 4: Kullanıcı Giriş & Profil -->
-            <div class="col-md-6 col-lg-6">
-                <div class="card h-100 border rounded-4 p-4 shadow-sm bg-white">
-                    <span class="badge bg-light text-dark border align-self-start mb-3">Kullanıcı İşlemleri</span>
-                    <h5 class="fw-bold text-dark mb-2">Kimlik Doğrulama & Profil</h5>
-                    <p class="text-muted small mb-3">
-                        Kullanıcıların kayıt olma, giriş yapma, çıkış yapma ve profil bilgilerini düzenleme sayfalarını kapsar. Öğrenci ve Yönetici rolleri tanımlanacaktır.
-                    </p>
-                    <div class="bg-light p-3 rounded-3 small mb-0">
-                        <strong class="text-dark">Temel Kurallar:</strong>
-                        <ul class="mb-0 ps-3 mt-1 text-secondary">
-                            <li>Kullanıcı kimlik doğrulama altyapısı.</li>
-                            <li>Öğrenci ve Yönetici rolleri ayrımı.</li>
-                            <li>Profil düzenleme ve kendi ilanlarını yönetme.</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Sayfa 5: Yönetici (Admin) Paneli -->
-            <div class="col-md-6 col-lg-6">
-                <div class="card h-100 border rounded-4 p-4 shadow-sm bg-white">
-                    <span class="badge bg-light text-dark border align-self-start mb-3">Yönetim</span>
-                    <h5 class="fw-bold text-dark mb-2">Yönetici Paneli (Admin)</h5>
-                    <p class="text-muted small mb-3">
-                        Yalnızca yetkili yöneticilerin erişebildiği, ilan kategorilerini düzenleme ve bildirilen/şikayet edilen uygunsuz ilanları inceleyip gizleme işlemlerinin yapıldığı kontrol panelidir.
-                    </p>
-                    <div class="bg-light p-3 rounded-3 small mb-0">
-                        <strong class="text-dark">Temel Kurallar:</strong>
-                        <ul class="mb-0 ps-3 mt-1 text-secondary">
-                            <li>Yetki kontrolü sunucu tarafında denetlenir.</li>
-                            <li>Kategori ekleme, düzenleme ve silme.</li>
-                            <li>Bildirilen ve uygunsuz bulunan ilanları gizleme.</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
+
+@section Scripts {
+    <script>
+        function filterFeed(category, btn) {
+            // Buton aktiflik sınıfları
+            const buttons = btn.parentElement.querySelectorAll('button');
+            buttons.forEach(b => {
+                b.classList.remove('btn-dark', 'active');
+                b.classList.add('btn-outline-dark');
+            });
+            btn.classList.add('btn-dark', 'active');
+            btn.classList.remove('btn-outline-dark');
+
+            // Kartları filtrele
+            const cards = document.querySelectorAll('.feed-card');
+            cards.forEach(card => {
+                if (category === 'all' || card.getAttribute('data-category') === category) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        function toggleJoin(btn) {
+            if (btn.classList.contains('btn-success')) {
+                btn.classList.remove('btn-success');
+                btn.classList.add('btn-outline-dark');
+                btn.innerHTML = '<i class="bi bi-plus-lg me-1"></i> Geliyorum';
+            } else {
+                btn.classList.add('btn-success');
+                btn.classList.remove('btn-outline-dark');
+                btn.innerHTML = '<i class="bi bi-check-lg me-1"></i> Katılıyorsun';
+            }
+        }
+    </script>
+}
