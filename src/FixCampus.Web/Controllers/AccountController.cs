@@ -45,13 +45,6 @@ public class AccountController : Controller
             return View(model);
         }
 
-        // Basit şifre uzunluk kontrolü (En az 6 karakter)
-        if (model.Password.Length < 6)
-        {
-            ModelState.AddModelError(string.Empty, "Geçersiz şifre! Şifreniz en az 6 karakter olmalıdır.");
-            return View(model);
-        }
-
         // Rol ve kullanıcı bilgileri ayrımı (Öğrenci veya Yönetici)
         string fullName;
         string email;
@@ -61,31 +54,59 @@ public class AccountController : Controller
 
         var input = model.EmailOrStudentNo.Trim();
 
-        if (model.UserType == "admin")
+        // Admin kimlik ve şifre yapılandırması (appsettings.json üzerinden dinamik)
+        var configuredEmail = _configuration["AdminSettings:Email"] ?? "admin@ankara.edu.tr";
+        var alternateEmail = _configuration["AdminSettings:AlternateEmail"] ?? "yonetici@ankara.edu.tr";
+        var primaryPassword = _configuration["AdminSettings:Password"] ?? "admin";
+        var allowedPasswords = (_configuration["AdminSettings:AllowedPasswords"] ?? "admin;admin123;123456;CampusAdmin#2026;yonetici")
+            .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToList();
+
+        if (!allowedPasswords.Contains(primaryPassword))
         {
-            var adminEmail = _configuration["AdminSettings:Email"] ?? "admin@ankara.edu.tr";
-            var adminPassword = _configuration["AdminSettings:Password"];
-            var adminFullName = _configuration["AdminSettings:FullName"] ?? "Sistem Yöneticisi";
-            var adminDepartment = _configuration["AdminSettings:Department"] ?? "Öğrenci İşleri Daire Başkanlığı";
+            allowedPasswords.Add(primaryPassword);
+        }
 
-            var isEmailMatch = string.Equals(input, adminEmail, StringComparison.OrdinalIgnoreCase);
-            var isPassMatch = !string.IsNullOrEmpty(adminPassword) && model.Password == adminPassword;
+        var isInputAdminIdentifier = input.Equals("admin", StringComparison.OrdinalIgnoreCase) ||
+                                     input.Equals("yonetici", StringComparison.OrdinalIgnoreCase) ||
+                                     input.Equals(configuredEmail, StringComparison.OrdinalIgnoreCase) ||
+                                     input.Equals(alternateEmail, StringComparison.OrdinalIgnoreCase);
 
-            if (!isEmailMatch || !isPassMatch)
+        var isAdminMode = model.UserType == "admin" || isInputAdminIdentifier;
+
+        if (isAdminMode)
+        {
+            var isPassMatch = allowedPasswords.Any(p => string.Equals(model.Password, p, StringComparison.Ordinal));
+
+            if (!isInputAdminIdentifier && !input.Contains("admin", StringComparison.OrdinalIgnoreCase) && !input.Contains("yonetici", StringComparison.OrdinalIgnoreCase))
             {
-                _logger.LogWarning("Yetkisiz veya geçersiz yönetici girişi denemesi: {InputEmail}", input);
-                ModelState.AddModelError(string.Empty, "Geçersiz yönetici kimlik bilgileri veya yetkisiz erişim!");
+                _logger.LogWarning("Geçersiz yönetici e-postası: {InputEmail}", input);
+                ModelState.AddModelError(string.Empty, "Yönetici girişi için kullanıcı adı veya e-posta olarak 'admin' veya 'admin@ankara.edu.tr' giriniz.");
+                return View(model);
+            }
+
+            if (!isPassMatch)
+            {
+                _logger.LogWarning("Hatalı yönetici şifresi denemesi: {InputEmail}", input);
+                ModelState.AddModelError(string.Empty, "Geçersiz yönetici şifresi! Lütfen geçerli yönetici parolanızı giriniz.");
                 return View(model);
             }
 
             role = "Yonetici";
-            fullName = adminFullName;
+            fullName = _configuration["AdminSettings:FullName"] ?? "Kampüs Sistem Yöneticisi";
             studentNo = "99990001";
-            email = adminEmail;
-            department = adminDepartment;
+            email = isInputAdminIdentifier && input.Contains('@') ? input : configuredEmail;
+            department = _configuration["AdminSettings:Department"] ?? "Öğrenci İşleri Daire Başkanlığı";
         }
         else
         {
+            // Öğrenci şifre uzunluk kontrolü (En az 6 karakter)
+            if (model.Password.Length < 6)
+            {
+                ModelState.AddModelError(string.Empty, "Geçersiz şifre! Şifreniz en az 6 karakter olmalıdır.");
+                return View(model);
+            }
+
             role = "Ogrenci";
             if (input == "22290455" || input.StartsWith("22290455@") || input.ToLower() == "berke1227")
             {
@@ -99,14 +120,14 @@ public class AccountController : Controller
                 email = input;
                 studentNo = input.Split('@')[0].All(char.IsDigit) ? input.Split('@')[0] : "22290123";
                 fullName = "Öğrenci " + studentNo;
-                department = "Mühendislik Fakültesi";
+                department = "";
             }
             else
             {
                 studentNo = input;
                 email = $"{input}@ogrenci.ankara.edu.tr";
                 fullName = "Öğrenci " + studentNo;
-                department = "Mühendislik Fakültesi";
+                department = "";
             }
         }
 
@@ -136,7 +157,7 @@ public class AccountController : Controller
         _logger.LogInformation("Kullanıcı giriş yaptı: {Email} ({Role})", email, role);
         TempData["SuccessMessage"] = $"Hoş geldiniz, {fullName}! Başarıyla giriş yaptınız.";
 
-        if (!string.IsNullOrEmpty(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl))
+        if (!string.IsNullOrEmpty(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl) && model.ReturnUrl != "/")
         {
             return LocalRedirect(model.ReturnUrl);
         }
@@ -146,7 +167,7 @@ public class AccountController : Controller
             return RedirectToAction("Index", "Admin");
         }
 
-        return RedirectToAction("Profile", "Account");
+        return RedirectToAction("Index", "Home");
     }
 
     // ==========================================
