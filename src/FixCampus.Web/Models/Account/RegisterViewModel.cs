@@ -30,8 +30,4 @@ public class RegisterViewModel
     [Display(Name = "Şifre Tekrar")]
     [Compare("Password", ErrorMessage = "Girdiğiniz şifreler eşleşmiyor.")]
     public string ConfirmPassword { get; set; } = string.Empty;
-
-    [Range(typeof(bool), "true", "true", ErrorMessage = "Kampüs platformu ilkelerini ve kullanım şartlarını onaylamalısınız.")]
-    [Display(Name = "Kullanım Şartlarını Kabul Ediyorum")]
-    public bool TermsAccepted { get; set; } = false;
 }
