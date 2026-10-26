@@ -30,7 +30,6 @@
                         </div>
                         <p class="text-muted small mb-0">
                             <span class="me-3"><i class="bi bi-card-text me-1"></i> @Model.StudentNo</span>
-                            <span class="me-3"><i class="bi bi-mortarboard me-1"></i> @(string.IsNullOrWhiteSpace(Model.Department) ? "Bölüm Belirtilmedi" : Model.Department)</span>
                             <span><i class="bi bi-calendar3 me-1"></i> Üyelik: @Model.MemberSince</span>
                         </p>
                     </div>
@@ -111,11 +110,7 @@
                             </div>
                         </div>
 
-                        <div class="mb-4">
-                            <label asp-for="Department" class="form-label fw-semibold small text-dark"></label>
-                            <input asp-for="Department" class="form-control" placeholder="Bölümünüz (örn: Bilgisayar Mühendisliği)" />
-                            <span asp-validation-for="Department" class="text-danger small"></span>
-                        </div>
+
 
                         <button type="submit" class="btn btn-dark rounded-3 px-4 fw-semibold">
                             Değişiklikleri Kaydet

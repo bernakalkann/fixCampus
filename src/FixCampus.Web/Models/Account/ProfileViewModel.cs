@@ -16,9 +16,6 @@ public class ProfileViewModel
     [Display(Name = "E-posta Adresi")]
     public string Email { get; set; } = string.Empty;
 
-    [Display(Name = "Bölüm / Program")]
-    public string Department { get; set; } = string.Empty;
-
     [Display(Name = "Kullanıcı Rolü")]
     public string Role { get; set; } = "Ogrenci";
 
