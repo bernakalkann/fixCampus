@@ -4,6 +4,9 @@ namespace FixCampus.Web.Models.Account;
 
 public class LoginViewModel
 {
+    [Display(Name = "Giriş Türü")]
+    public string UserType { get; set; } = "student"; // "student" veya "admin"
+
     [Required(ErrorMessage = "E-posta adresi veya öğrenci numarası zorunludur.")]
     [Display(Name = "E-posta veya Öğrenci No")]
     public string EmailOrStudentNo { get; set; } = string.Empty;

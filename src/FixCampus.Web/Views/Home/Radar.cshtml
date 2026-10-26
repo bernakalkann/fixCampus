@@ -3,48 +3,206 @@
 }
 
 <div class="container py-4">
-    <!-- Sayfa Açıklaması ve Kapsam Bilgisi -->
-    <div class="p-4 mb-4 rounded-4 bg-white border shadow-sm">
-        <span class="badge bg-light text-dark border mb-2">Sosyal Radar Modülü</span>
-        <h2 class="fw-bold text-dark mb-2">Sosyal Radar Buluşma Ekranı</h2>
-        <p class="text-secondary mb-2">
-            <strong>Modülün Amacı:</strong> Üniversite öğrencilerinin ders aralarında veya boş vakitlerinde birlikte etkinlik düzenleyebileceği, ders çalışabileceği veya kahve içebileceği buluşma ilanlarını paylaşmasıdır.
-        </p>
-        <p class="text-muted small mb-0">
-            <strong>Planlanan İşlevler:</strong> Buluşma yeri, tarih ve saat bilgisiyle ilan açılabilecek; diğer öğrenciler <em>"Geliyorum"</em> butonuyla katılabilecek veya katılımını geri alabilecektir. Süresi geçen buluşmalar aktif akıştan otomatik gizlenecektir.
-        </p>
+
+    <!-- Sayfa Başlığı (Sade, Açıklama Kutusu Kaldırıldı) -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold text-dark mb-1">Sosyal Radar &bull; Buluşmalar</h2>
+            <p class="text-muted small mb-0">Kampüsteki ders çalışma grupları, spor etkinlikleri ve öğrenci buluşmaları.</p>
+        </div>
+        <div>
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+                <button type="button" class="btn btn-dark btn-sm rounded-3 px-3 py-2 fw-semibold" data-bs-toggle="modal" data-bs-target="#newMeetupModal">
+                    <i class="bi bi-plus-circle me-1"></i> Yeni Buluşma Oluştur
+                </button>
+            }
+            else
+            {
+                <a asp-controller="Account" asp-action="Login" asp-route-returnUrl="/Home/Radar" class="btn btn-dark btn-sm rounded-3 px-3 py-2 fw-semibold">
+                    <i class="bi bi-box-arrow-in-right me-1"></i> Buluşma Açmak İçin Giriş Yap
+                </a>
+            }
+        </div>
     </div>
 
-    <!-- Filtreleme Bölümü İskeleti -->
+    <!-- Filtreleme Çubuğu -->
     <div class="card border rounded-4 p-3 mb-4 bg-white shadow-sm">
         <div class="row g-2 align-items-center">
             <div class="col-md-5">
-                <input type="text" class="form-control" placeholder="Buluşma başlığı veya lokasyon ara..." disabled />
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                    <input type="text" id="radarSearch" class="form-control border-start-0" placeholder="Buluşma başlığı veya lokasyon ara..." onkeyup="filterRadarCards()" />
+                </div>
             </div>
             <div class="col-md-3">
-                <select class="form-select" disabled>
-                    <option>Zaman Filtresi (Bugün, Yarın, Hafta Sonu)</option>
+                <select id="timeFilter" class="form-select form-select-sm" onchange="filterRadarCards()">
+                    <option value="">Tüm Zamanlar</option>
+                    <option value="today">Bugün</option>
+                    <option value="tomorrow">Yarın</option>
+                    <option value="weekend">Hafta Sonu</option>
                 </select>
             </div>
             <div class="col-md-2">
-                <select class="form-select" disabled>
-                    <option>Konum (Kütüphane, Kafe, vb.)</option>
+                <select id="locationFilter" class="form-select form-select-sm" onchange="filterRadarCards()">
+                    <option value="">Tüm Konumlar</option>
+                    <option value="kutuphane">Kütüphane</option>
+                    <option value="kafe">Kafeterya</option>
+                    <option value="spor">Spor Tesisleri</option>
+                    <option value="derslik">Derslik</option>
                 </select>
             </div>
             <div class="col-md-2">
-                <button class="btn btn-dark w-100 disabled">Filtrele</button>
+                <button type="button" class="btn btn-outline-dark btn-sm w-100" onclick="resetRadarFilters()">Filtreyi Temizle</button>
             </div>
         </div>
     </div>
 
-    <!-- Yeni Buluşma İlanı Açma Form İskeleti -->
-    <div class="card border border-dashed rounded-4 p-5 d-flex flex-column justify-content-center align-items-center text-center bg-light">
-        <h5 class="fw-bold text-dark mb-2">Yeni Buluşma İlanı Açma Formu</h5>
-        <p class="text-muted small mb-3" style="max-width: 480px;">
-            Öğrenciler burada buluşma başlığı, açıklama, kampüs içi konum ve buluşma zamanı (tarih/saat) girerek radar ilanı yayınlayabilecektir.
-        </p>
-        <button class="btn btn-outline-dark btn-sm px-4">
-            Yeni Buluşma Formu Alanı
-        </button>
+    <!-- Buluşma Kartları Grid -->
+    <div class="row g-4" id="radarCardsGrid">
+        <!-- Buluşma 1 -->
+        <div class="col-md-6 col-lg-4 radar-card" data-location="kutuphane" data-time="today">
+            <div class="card border rounded-4 shadow-sm bg-white p-4 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="badge bg-light text-dark border">Çalışma Grubu</span>
+                    <span class="text-muted small"><i class="bi bi-clock me-1"></i> Bugün 16:30</span>
+                </div>
+                <h5 class="fw-bold text-dark mb-1">BLM4581 Ağ Tabanlı Teknolojiler Soru Çözümü</h5>
+                <p class="text-muted small mb-2"><i class="bi bi-geo-alt me-1"></i> Kütüphane 2. Kat Grup Çalışma</p>
+                <p class="text-secondary small mb-3">Vize öncesi çıkmış soruları ve laboratuvar örneklerini birlikte çözüyoruz.</p>
+                <div class="d-flex justify-content-between align-items-center pt-3 border-top mt-auto">
+                    <span class="small text-muted"><i class="bi bi-people-fill text-success me-1"></i> 4 Katılımcı</span>
+                    <button type="button" class="btn btn-sm btn-outline-dark rounded-pill px-3" onclick="toggleJoin(this)">
+                        <i class="bi bi-plus-lg me-1"></i> Geliyorum
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Buluşma 2 -->
+        <div class="col-md-6 col-lg-4 radar-card" data-location="spor" data-time="tomorrow">
+            <div class="card border rounded-4 shadow-sm bg-white p-4 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="badge bg-light text-dark border">Spor & Etkinlik</span>
+                    <span class="text-muted small"><i class="bi bi-clock me-1"></i> Yarın 19:00</span>
+                </div>
+                <h5 class="fw-bold text-dark mb-1">Mühendislik Halı Saha Maçı (2 Kişi Eksik)</h5>
+                <p class="text-muted small mb-2"><i class="bi bi-geo-alt me-1"></i> Kampüs Spor Tesisleri</p>
+                <p class="text-secondary small mb-3">Dostluk maçı havasında kaleci veya defans için 2 arkadaş arıyoruz.</p>
+                <div class="d-flex justify-content-between align-items-center pt-3 border-top mt-auto">
+                    <span class="small text-muted"><i class="bi bi-people-fill text-success me-1"></i> 10 / 12 Kişi</span>
+                    <button type="button" class="btn btn-sm btn-outline-dark rounded-pill px-3" onclick="toggleJoin(this)">
+                        <i class="bi bi-plus-lg me-1"></i> Geliyorum
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Buluşma 3 -->
+        <div class="col-md-6 col-lg-4 radar-card" data-location="kafe" data-time="today">
+            <div class="card border rounded-4 shadow-sm bg-white p-4 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="badge bg-light text-dark border">Sosyal Buluşma</span>
+                    <span class="text-muted small"><i class="bi bi-clock me-1"></i> Bugün 15:00</span>
+                </div>
+                <h5 class="fw-bold text-dark mb-1">Girişimcilik ve Yazılım Sohbeti</h5>
+                <p class="text-muted small mb-2"><i class="bi bi-geo-alt me-1"></i> Gölbaşı Öğrenci Kafeteryası</p>
+                <p class="text-secondary small mb-3">Yeni proje fikirleri olan ve teknoloji üzerine sohbet etmek isteyen herkes davetli.</p>
+                <div class="d-flex justify-content-between align-items-center pt-3 border-top mt-auto">
+                    <span class="small text-muted"><i class="bi bi-people-fill text-success me-1"></i> 6 Katılımcı</span>
+                    <button type="button" class="btn btn-sm btn-outline-dark rounded-pill px-3" onclick="toggleJoin(this)">
+                        <i class="bi bi-plus-lg me-1"></i> Geliyorum
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Yeni Buluşma Açma Modalı -->
+<div class="modal fade" id="newMeetupModal" tabindex="-1" aria-labelledby="newMeetupModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-bottom p-4">
+                <h5 class="modal-title fw-bold text-dark" id="newMeetupModalLabel">Yeni Sosyal Radar Buluşması</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="meetupForm" onsubmit="event.preventDefault(); alert('Buluşma ilanınız başarıyla oluşturuldu.'); location.reload();">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-dark">Buluşma Başlığı</label>
+                        <input type="text" class="form-control" placeholder="Örn: Kütüphanede Algoritma Çalışması" required />
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold text-dark">Tarih</label>
+                            <input type="date" class="form-control" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold text-dark">Saat</label>
+                            <input type="time" class="form-control" required />
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-dark">Buluşma Yeri / Kampüs Lokasyonu</label>
+                        <input type="text" class="form-control" placeholder="Örn: Kütüphane 2. Kat Grup Çalışma Masası" required />
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label small fw-semibold text-dark">Açıklama</label>
+                        <textarea class="form-control" rows="3" placeholder="Buluşma amacı ve detayları..."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-dark w-100 py-2 rounded-3 fw-semibold">
+                        Buluşmayı Yayınla
+                    </button>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        function filterRadarCards() {
+            const query = document.getElementById('radarSearch').value.toLowerCase();
+            const time = document.getElementById('timeFilter').value;
+            const location = document.getElementById('locationFilter').value;
+
+            const cards = document.querySelectorAll('.radar-card');
+            cards.forEach(card => {
+                const text = card.innerText.toLowerCase();
+                const cardLoc = card.getAttribute('data-location');
+                const cardTime = card.getAttribute('data-time');
+
+                const matchesQuery = !query || text.includes(query);
+                const matchesTime = !time || cardTime === time;
+                const matchesLoc = !location || cardLoc === location;
+
+                if (matchesQuery && matchesTime && matchesLoc) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        function resetRadarFilters() {
+            document.getElementById('radarSearch').value = '';
+            document.getElementById('timeFilter').value = '';
+            document.getElementById('locationFilter').value = '';
+            filterRadarCards();
+        }
+
+        function toggleJoin(btn) {
+            if (btn.classList.contains('btn-success')) {
+                btn.classList.remove('btn-success');
+                btn.classList.add('btn-outline-dark');
+                btn.innerHTML = '<i class="bi bi-plus-lg me-1"></i> Geliyorum';
+            } else {
+                btn.classList.add('btn-success');
+                btn.classList.remove('btn-outline-dark');
+                btn.innerHTML = '<i class="bi bi-check-lg me-1"></i> Katılıyorsun';
+            }
+        }
+    </script>
+}

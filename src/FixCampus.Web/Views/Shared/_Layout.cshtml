@@ -76,6 +76,13 @@
                     <div class="d-flex align-items-center gap-2">
                         @if (User.Identity?.IsAuthenticated == true)
                         {
+                            @if (User.IsInRole("Yonetici"))
+                            {
+                                <a asp-controller="Admin" asp-action="Index" class="btn btn-outline-danger btn-sm px-3">
+                                    <i class="bi bi-shield-lock me-1"></i> Yönetici Paneli
+                                </a>
+                            }
+
                             <a asp-controller="Home" asp-action="Ads" class="btn btn-dark btn-sm px-3">
                                 İlan Ver
                             </a>
@@ -90,6 +97,14 @@
                                         <div class="fw-semibold small text-dark">@User.Identity.Name</div>
                                         <div class="text-muted" style="font-size: 0.75rem;">@User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Email)?.Value</div>
                                     </li>
+                                    @if (User.IsInRole("Yonetici"))
+                                    {
+                                        <li>
+                                            <a class="dropdown-item py-2 small d-flex align-items-center gap-2 text-danger fw-semibold" asp-controller="Admin" asp-action="Index">
+                                                <i class="bi bi-shield-lock text-danger"></i> Yönetici Paneli
+                                            </a>
+                                        </li>
+                                    }
                                     <li>
                                         <a class="dropdown-item py-2 small d-flex align-items-center gap-2" asp-controller="Account" asp-action="Profile">
                                             <i class="bi bi-person text-muted"></i> Profilim

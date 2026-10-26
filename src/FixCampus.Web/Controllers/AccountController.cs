@@ -43,42 +43,47 @@ public class AccountController : Controller
             return View(model);
         }
 
-        // Simüle Kimlik Doğrulama (Hafta 2 Kapsamı - Berna'nın Supabase Auth entegrasyonuyla tam uyumlu)
-        // Varsayılan Berke Mahmut Acar öğrenci hesabı veya geçerli kampüs formatı
+        // Rol ve kullanıcı bilgileri ayrımı (Öğrenci veya Yönetici)
         string fullName;
         string email;
         string studentNo;
-        string role = "Ogrenci";
-        string department = "Bilgisayar Mühendisliği";
+        string role;
+        string department;
 
         var input = model.EmailOrStudentNo.Trim();
 
-        if (input == "22290455" || input.StartsWith("22290455@") || input.ToLower() == "berke1227")
+        if (model.UserType == "admin")
         {
-            fullName = "Berke Mahmut Acar";
-            studentNo = "22290455";
-            email = "22290455@ogrenci.ankara.edu.tr";
-            role = "Ogrenci";
-        }
-        else if (input.ToLower().Contains("admin") || input.ToLower().Contains("yonetici"))
-        {
+            role = "Yonetici";
             fullName = "Kampüs Yönetici";
             studentNo = "99990001";
-            email = "yonetici@ankara.edu.tr";
-            role = "Yonetici";
+            email = input.Contains('@') ? input : $"{input}@ankara.edu.tr";
             department = "Öğrenci İşleri Daire Başkanlığı";
-        }
-        else if (input.Contains('@'))
-        {
-            email = input;
-            studentNo = input.Split('@')[0].All(char.IsDigit) ? input.Split('@')[0] : "22290123";
-            fullName = "Öğrenci " + studentNo;
         }
         else
         {
-            studentNo = input;
-            email = $"{input}@ogrenci.ankara.edu.tr";
-            fullName = "Öğrenci " + studentNo;
+            role = "Ogrenci";
+            if (input == "22290455" || input.StartsWith("22290455@") || input.ToLower() == "berke1227")
+            {
+                fullName = "Berke Mahmut Acar";
+                studentNo = "22290455";
+                email = "22290455@ogrenci.ankara.edu.tr";
+                department = "Bilgisayar Mühendisliği";
+            }
+            else if (input.Contains('@'))
+            {
+                email = input;
+                studentNo = input.Split('@')[0].All(char.IsDigit) ? input.Split('@')[0] : "22290123";
+                fullName = "Öğrenci " + studentNo;
+                department = "Mühendislik Fakültesi";
+            }
+            else
+            {
+                studentNo = input;
+                email = $"{input}@ogrenci.ankara.edu.tr";
+                fullName = "Öğrenci " + studentNo;
+                department = "Mühendislik Fakültesi";
+            }
         }
 
         // Basit şifre uzunluk kontrolü (En az 6 karakter)
@@ -114,7 +119,17 @@ public class AccountController : Controller
         _logger.LogInformation("Kullanıcı giriş yaptı: {Email} ({Role})", email, role);
         TempData["SuccessMessage"] = $"Hoş geldiniz, {fullName}! Başarıyla giriş yaptınız.";
 
-        return LocalRedirect(GetSafeReturnUrl(model.ReturnUrl));
+        if (!string.IsNullOrEmpty(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl))
+        {
+            return LocalRedirect(model.ReturnUrl);
+        }
+
+        if (role == "Yonetici")
+        {
+            return RedirectToAction("Index", "Admin");
+        }
+
+        return RedirectToAction("Profile", "Account");
     }
 
     // ==========================================
