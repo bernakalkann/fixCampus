@@ -25,7 +25,7 @@ repo kökünden migration uygulanmalıdır:
 
 ```sh
 dotnet tool restore --tool-manifest dotnet-tools.json
-dotnet tool run dotnet-ef --tool-manifest dotnet-tools.json -- database update --project src/FixCampus.Web
+dotnet ef database update --project src/FixCampus.Web
 ```
 
 `20261029150000_AddProfileEducation` yalnız iki nullable sütun ekler; mevcut kayıtları değiştirmez.
