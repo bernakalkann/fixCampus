@@ -18,6 +18,8 @@ public class FixCampusDbContext(DbContextOptions<FixCampusDbContext> options) : 
         {
             b.Property<Guid>("Id").HasColumnType("uuid").ValueGeneratedNever().IsRequired();
             b.Property<string>("AdSoyad").HasColumnType("character varying(100)").HasMaxLength(100).IsRequired();
+            b.Property(x => x.Bolum).HasColumnType("character varying(200)").HasMaxLength(200);
+            b.Property(x => x.Sinif).HasColumnType("character varying(30)").HasMaxLength(30);
             b.Property<string>("Rol").HasColumnType("character varying(20)").HasMaxLength(20).IsRequired();
             b.Property<DateTimeOffset>("OlusturulmaTarihi").HasColumnType("timestamp with time zone").IsRequired();
             b.HasKey("Id");

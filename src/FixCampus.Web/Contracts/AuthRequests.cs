@@ -23,4 +23,6 @@ public sealed class RefreshRequest
 public sealed class UpdateProfileRequest
 {
     [Required, StringLength(100, MinimumLength = 2)] public string AdSoyad { get; set; } = "";
+    [StringLength(200)] public string? Bolum { get; set; }
+    [StringLength(30)] public string? Sinif { get; set; }
 }

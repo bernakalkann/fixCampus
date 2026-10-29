@@ -7,5 +7,5 @@ namespace FixCampus.Web.Data.Migrations;
 public class FixCampusDbContextModelSnapshot : ModelSnapshot
 {
     protected override void BuildModel(ModelBuilder modelBuilder)
-        => InitialDataModel.Build(modelBuilder);
+        => ProfileEducationModel.Build(modelBuilder);
 }
