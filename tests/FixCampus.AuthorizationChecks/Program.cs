@@ -31,6 +31,7 @@ if (args.Length == 2 && args[0] == "--live-role-read" && Guid.TryParse(args[1], 
     return;
 }
 
+ListingValidationChecks.Run();
 // Exercise the real HTTP authentication/authorization pipeline; external services are deterministic fakes.
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = "Development" });
 builder.WebHost.UseUrls("http://127.0.0.1:0");
@@ -151,6 +152,22 @@ try
     {
         await Check("/api/ilanlar", "student", HttpStatusCode.BadRequest, method: HttpMethod.Post, json: json);
         await Check(listingPath, "student", HttpStatusCode.BadRequest, method: HttpMethod.Put, json: json);
+    }
+    foreach(var method in new[] { HttpMethod.Post, HttpMethod.Put })
+    {
+        using var request = new HttpRequestMessage(method, method == HttpMethod.Post ? "/api/ilanlar" : listingPath);
+        request.Headers.Authorization = new("Bearer", "student");
+        request.Content = new StringContent("""
+            {"baslik":"Geçerli ilan","aciklama":"Açıklama","yer":"Kampüs","tur":"Sosyal",
+            "kategoriId":"11111111-1111-4111-8111-111111111111","bulusmaTarihi":"2000-01-01T15:00:00+03:00"}
+            """, Encoding.UTF8,"application/json");
+        using var response=await http.SendAsync(request);
+        using var body=JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        if(response.StatusCode!=HttpStatusCode.BadRequest ||
+            !body.RootElement.GetProperty("errors").GetProperty("BulusmaTarihi").EnumerateArray()
+                .Any(x=>x.GetString()=="Buluşma tarihi gelecekte olmalıdır."))
+            throw new Exception("Geçmiş tarih için alan bazlı Türkçe 400 yanıtı dönmedi.");
+        count++;
     }
     await Check("/api/yetki/ogrenci", null, HttpStatusCode.Unauthorized);
     await Check("/api/yetki/yonetici", null, HttpStatusCode.Unauthorized);
