@@ -44,6 +44,8 @@ var roleStore = new TestRoleStore();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddOpenApi(options => options.AddDocumentTransformer<BearerSecurityDocumentTransformer>());
 builder.Services.AddControllers().AddApplicationPart(typeof(AccessController).Assembly);
+builder.Services.AddDbContext<FixCampusDbContext>(options => options.UseNpgsql(
+    "Host=127.0.0.1;Database=unused;Username=test;Password=test"));
 builder.Services.AddSingleton(new SupabaseAuthClient(new HttpClient(new TestAuthTransport()), builder.Configuration));
 // Match the web app: MVC uses cookies; API endpoints must explicitly use Bearer.
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -53,6 +55,8 @@ builder.Services.AddRateLimiter(options => options.AddPolicy("auth", _ => RateLi
 builder.Services.AddScoped<SupabaseCookieEvents>();
 builder.Services.AddCampusAuthorization();
 builder.Services.Replace(ServiceDescriptor.Singleton<IProfileRoleReader>(roleStore));
+var inProcess = args.Contains("--in-process") ? new InProcessServer() : null;
+if (inProcess is not null) builder.Services.AddSingleton<IServer>(inProcess);
 await using var app = builder.Build();
 app.UseRateLimiter();
 app.UseAuthentication();
@@ -74,11 +78,14 @@ app.MapGet("/auth-only", () => Results.Ok())
 app.MapGet("/web-only", () => Results.Ok()).RequireAuthorization();
 app.MapGet("/web-admin", () => Results.Ok())
     .RequireAuthorization(new AuthorizeAttribute { Roles = AppRoles.Administrator });
+Console.WriteLine("Starting HTTP authorization/OpenAPI checks...");
 await app.StartAsync();
 try
 {
     var address = app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.Single();
-    using var http = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false }) { BaseAddress = new Uri(address) };
+    Console.WriteLine("HTTP test server started.");
+    using var http = new HttpClient(inProcess?.CreateHandler() ??
+        new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false }) { BaseAddress = new Uri(address) };
     var cookieOptions = app.Services.GetRequiredService<IOptionsMonitor<CookieAuthenticationOptions>>()
         .Get(CookieAuthenticationDefaults.AuthenticationScheme);
     string Cookie(Guid userId, string? token, string role)
@@ -94,9 +101,10 @@ try
     var webCookie = Cookie(TestRoleStore.StudentId, "student", AppRoles.Student);
     var adminCookie = Cookie(TestRoleStore.AdminId, "admin", AppRoles.Administrator);
     var count = 0;
-    async Task Check(string path, string? token, HttpStatusCode expected, string? expectedRole = null, bool forgedHeaders = false, string? cookie = null, HttpMethod? method = null)
+    async Task Check(string path, string? token, HttpStatusCode expected, string? expectedRole = null, bool forgedHeaders = false, string? cookie = null, HttpMethod? method = null, string? json = null)
     {
         using var request = new HttpRequestMessage(method ?? HttpMethod.Get, path);
+        if (json is not null) request.Content = new StringContent(json, Encoding.UTF8, "application/json");
         if (cookie is not null) request.Headers.Add("Cookie", cookie);
         if (token is not null) request.Headers.Authorization = new("Bearer", token);
         if (forgedHeaders)
@@ -122,6 +130,28 @@ try
         count++;
     }
     await Check("/api/durum", null, HttpStatusCode.OK);
+    var listingPath = "/api/ilanlar/11111111-1111-4111-8111-111111111111";
+    foreach (var (path, method) in new[] { ("/api/ilanlar", HttpMethod.Get), (listingPath, HttpMethod.Get),
+        ("/api/ilanlar", HttpMethod.Post), (listingPath, HttpMethod.Put), (listingPath, HttpMethod.Delete),
+        ("/api/kategoriler", HttpMethod.Get) })
+    {
+        await Check(path, null, HttpStatusCode.Unauthorized, method: method);
+        await Check(path, "invalid", HttpStatusCode.Unauthorized, method: method);
+        await Check(path, "missing-profile", HttpStatusCode.Forbidden, method: method);
+        await Check(path, null, HttpStatusCode.Unauthorized, cookie: webCookie, method: method);
+    }
+    // These requests must be rejected before any database query is attempted.
+    foreach (var json in new[] { "{}", "null", "{", """
+        {"baslik":"Geçersiz","aciklama":"Açıklama","yer":"Kampüs","tur":"Root",
+         "kategoriId":"11111111-1111-4111-8111-111111111111"}
+        """, """
+        {"baslik":"Geçersiz","aciklama":"Açıklama","yer":"Kampüs","tur":"Sosyal",
+         "kategoriId":"11111111-1111-4111-8111-111111111111"}
+        """ })
+    {
+        await Check("/api/ilanlar", "student", HttpStatusCode.BadRequest, method: HttpMethod.Post, json: json);
+        await Check(listingPath, "student", HttpStatusCode.BadRequest, method: HttpMethod.Put, json: json);
+    }
     await Check("/api/yetki/ogrenci", null, HttpStatusCode.Unauthorized);
     await Check("/api/yetki/yonetici", null, HttpStatusCode.Unauthorized);
     await Check("/api/yetki/yonetici", "invalid", HttpStatusCode.Unauthorized);
@@ -179,6 +209,17 @@ try
     if (root.GetProperty("components").GetProperty("securitySchemes").GetProperty("Bearer").GetProperty("scheme").GetString() != "bearer")
         throw new Exception("Swagger Bearer scheme missing.");
     var paths = root.GetProperty("paths");
+    foreach (var (path, method, status) in new[] { ("/api/ilanlar", "get", "200"),
+        ("/api/ilanlar", "post", "201"), ("/api/ilanlar/{id}", "get", "200"),
+        ("/api/ilanlar/{id}", "put", "200"), ("/api/ilanlar/{id}", "delete", "204"),
+        ("/api/kategoriler", "get", "200") })
+    {
+        var operation = paths.GetProperty(path).GetProperty(method);
+        if (!operation.GetProperty("security")[0].TryGetProperty("Bearer", out _) ||
+            !operation.GetProperty("responses").TryGetProperty(status, out _))
+            throw new Exception("Listing/category operation missing response or Bearer documentation.");
+        count++;
+    }
     foreach (var (path, method) in new[] { ("/api/yetki/ogrenci", "get"), ("/api/yetki/yonetici", "get"), ("/api/profil", "get"), ("/api/profil", "put"), ("/api/auth/cikis", "post") })
     {
         if (!paths.GetProperty(path).GetProperty(method).GetProperty("security")[0].TryGetProperty("Bearer", out _))

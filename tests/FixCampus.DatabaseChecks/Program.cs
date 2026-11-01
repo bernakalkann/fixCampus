@@ -10,6 +10,69 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
+using FixCampus.Web.Models.Entities;
+using System.ComponentModel.DataAnnotations;
+
+if (args.Contains("--live-read-only"))
+{
+    var configuration = new ConfigurationBuilder().AddUserSecrets(typeof(FixCampusDbContext).Assembly)
+        .AddEnvironmentVariables().Build();
+    var configured = configuration.GetConnectionString("Supabase")
+        ?? throw new InvalidOperationException("Supabase bağlantısı tanımlı değil.");
+    var settings = new NpgsqlConnectionStringBuilder(configured) { Timeout = 10, CommandTimeout = 10 };
+    try
+    {
+        await using var liveDb = new FixCampusDbContext(new DbContextOptionsBuilder<FixCampusDbContext>()
+            .UseNpgsql(settings.ConnectionString).Options);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        await liveDb.Database.OpenConnectionAsync(timeout.Token);
+        Console.WriteLine($"PASS: canlı Supabase bağlantısı; {await liveDb.Profiller.CountAsync(timeout.Token)} profil, " +
+            $"{await liveDb.Kategoriler.CountAsync(timeout.Token)} kategori, {await liveDb.Ilanlar.CountAsync(timeout.Token)} ilan.");
+        Console.WriteLine("Migration: " + string.Join(", ", await liveDb.Database.GetAppliedMigrationsAsync(timeout.Token)));
+        Require(!liveDb.Database.HasPendingModelChanges(), "Model/snapshot uyuşmazlığı.");
+        Console.WriteLine("PASS: model ve snapshot uyumlu; veritabanında değişiklik yapılmadı.");
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine("Canlı bağlantı başarısız: " + ex.GetType().Name +
+            (ex.InnerException is null ? "" : " / " + ex.InnerException.GetType().Name));
+        Environment.ExitCode = 1;
+    }
+    return;
+}
+
+SaveListingRequest ValidListing() => new()
+{
+    Baslik = " Test ilanı ", Aciklama = " Açıklama ", Yer = " Kampüs ",
+    KategoriId = Guid.NewGuid(), Tur = "Kayip"
+};
+bool Valid(SaveListingRequest request) => Validator.TryValidateObject(request,
+    new ValidationContext(request), new List<ValidationResult>(), true);
+Require(Valid(ValidListing()), "Geçerli kayıp ilanı reddedildi.");
+foreach (var change in new Action<SaveListingRequest>[]
+{
+    x => x.Baslik = "  ", x => x.Baslik = new string('a', 151),
+    x => x.Aciklama = " ", x => x.Aciklama = new string('a', 3001),
+    x => x.Yer = " ", x => x.Yer = new string('a', 201),
+    x => x.KategoriId = Guid.Empty, x => x.Tur = "Root", x => x.Tur = "Sosyal",
+    x => x.BulusmaTarihi = DateTimeOffset.UtcNow
+})
+{
+    var request = ValidListing();
+    change(request);
+    Require(!Valid(request), "Geçersiz ilan alanı kabul edildi.");
+}
+var socialRequest = ValidListing();
+socialRequest.Tur = "Sosyal";
+socialRequest.BulusmaTarihi = DateTimeOffset.UtcNow.AddDays(1);
+Require(Valid(socialRequest), "Tarihli sosyal ilan reddedildi.");
+var massAssignment = JsonSerializer.Deserialize<SaveListingRequest>("""
+    {"baslik":"Test","sahipId":"11111111-1111-4111-8111-111111111111","durum":"Gizli"}
+    """, new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
+Require(typeof(SaveListingRequest).GetProperty("SahipId") is null &&
+    typeof(SaveListingRequest).GetProperty("Durum") is null && massAssignment.Baslik == "Test",
+    "İstemci sahiplik/durum alanlarına erişebiliyor.");
+Console.WriteLine("PASS: ilan DTO alan/tür/tarih doğrulamaları ve sahiplik/durum sözleşmesi.");
 
 // Validate snapshot and generated PostgreSQL migration SQL without a database connection.
 if (args.Contains("--model-only"))
@@ -132,6 +195,71 @@ Require(profile.GetProperty("sinif").GetString() == "Hazırlık", "Sınıf metin
 Require(await db.Profiller.AsNoTracking().Where(x => x.Id == userId).Select(x => x.Bolum).SingleAsync() == "",
     "Başka kullanıcının profili değiştirildi.");
 Console.WriteLine("PASS: migration, snapshot, seed, ilişkiler, canlı okuma ve profil GET/PUT geriye uyumluluğu.");
+
+// Full CRUD and ownership checks use only the disposable fixcampus_test fixture above.
+ListingsController Listings(Guid owner) => new(db)
+{
+    ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext
+    {
+        User = new ClaimsPrincipal(new ClaimsIdentity(new[]
+        { new Claim(ClaimTypes.NameIdentifier, owner.ToString()) }, "test"))
+    } }
+};
+var lostCategory = new Kategori { Ad = "Test kayıp", Tur = "Kayip" };
+var socialCategory = new Kategori { Ad = "Test sosyal", Tur = "Sosyal" };
+db.Kategoriler.AddRange(lostCategory, socialCategory);
+await db.SaveChangesAsync();
+var saveRequest = ValidListing();
+saveRequest.KategoriId = lostCategory.Id;
+var created = await Listings(userId).Create(saveRequest, default) as CreatedAtActionResult;
+Require(created?.Value is ListingResponse, "İlan oluşturulmadı/201 dönmedi.");
+var saved = (ListingResponse)created!.Value!;
+Require(saved.SahipId == userId && saved.Durum == "Aktif" && saved.Baslik == "Test ilanı" &&
+    saved.Aciklama == "Açıklama" && saved.Yer == "Kampüs", "Sahiplik/durum/trim hatalı.");
+Require(created.ActionName == "Get" && (Guid)created.RouteValues!["id"]! == saved.Id,
+    "201 Location yönlendirmesi hatalı.");
+db.ChangeTracker.Clear();
+Require(await Listings(userId).Get(saved.Id, default) is OkObjectResult { Value: ListingResponse }, "Detay okunamadı.");
+saveRequest.Baslik = "Düzenlenen ilan";
+Require(await Listings(otherId).Update(saved.Id, saveRequest, default) is ForbidResult, "Başkasının ilanı güncellendi.");
+Require(await Listings(otherId).Delete(saved.Id, default) is ForbidResult, "Başkasının ilanı silindi.");
+Require((await db.Ilanlar.AsNoTracking().SingleAsync(x => x.Id == saved.Id)).Baslik == "Test ilanı", "Yetkisiz işlem veriyi değiştirdi.");
+Require(await Listings(userId).Update(saved.Id, saveRequest, default) is OkObjectResult, "Sahibi ilanı güncelleyemedi.");
+db.ChangeTracker.Clear();
+Require((await db.Ilanlar.AsNoTracking().SingleAsync(x => x.Id == saved.Id)).Baslik == "Düzenlenen ilan", "Güncelleme kalıcı değil.");
+saveRequest.KategoriId = Guid.NewGuid();
+Require(await Listings(userId).Create(saveRequest, default) is ObjectResult { StatusCode: 400 }, "Olmayan kategori kabul edildi.");
+saveRequest.KategoriId = socialCategory.Id;
+Require(await Listings(userId).Update(saved.Id, saveRequest, default) is ObjectResult { StatusCode: 400 }, "Kategori/tür uyuşmazlığı kabul edildi.");
+var missingId = Guid.NewGuid();
+Require(await Listings(userId).Get(missingId, default) is NotFoundObjectResult &&
+    await Listings(userId).Update(missingId, saveRequest, default) is NotFoundObjectResult &&
+    await Listings(userId).Delete(missingId, default) is NotFoundObjectResult, "Olmayan ilan 404 dönmedi.");
+saveRequest.Tur = "Sosyal";
+saveRequest.BulusmaTarihi = new DateTimeOffset(2030, 1, 1, 12, 0, 0, TimeSpan.FromHours(3));
+var socialCreated = (CreatedAtActionResult)await Listings(userId).Create(saveRequest, default);
+var socialSaved = (ListingResponse)socialCreated.Value!;
+db.ChangeTracker.Clear();
+Require((await db.Ilanlar.SingleAsync(x => x.Id == socialSaved.Id)).BulusmaTarihi ==
+    saveRequest.BulusmaTarihi.Value.ToUniversalTime(), "Tarih UTC olarak kaydedilmedi.");
+db.Katilimlar.Add(new Katilim { IlanId = saved.Id, ProfilId = otherId });
+db.IlanFotograflari.Add(new IlanFotografi { IlanId = saved.Id, DosyaYolu = "test/photo.jpg" });
+db.Sikayetler.Add(new Sikayet { IlanId = saved.Id, BildirenId = otherId, Neden = "Test" });
+await db.SaveChangesAsync();
+db.ChangeTracker.Clear();
+Require(await Listings(userId).Delete(saved.Id, default) is NoContentResult, "Silme 204 dönmedi.");
+Require(!await db.Ilanlar.AnyAsync(x => x.Id == saved.Id) &&
+    !await db.Katilimlar.AnyAsync(x => x.IlanId == saved.Id) &&
+    !await db.IlanFotograflari.AnyAsync(x => x.IlanId == saved.Id) &&
+    !await db.Sikayetler.AnyAsync(x => x.IlanId == saved.Id), "İlan veya bağlı kayıtlar silinmedi.");
+var socialEntity = await db.Ilanlar.SingleAsync(x => x.Id == socialSaved.Id);
+socialEntity.Durum = "Gizli";
+await db.SaveChangesAsync();
+Require(await Listings(userId).Get(socialSaved.Id, default) is NotFoundObjectResult, "Gizli ilan detayda gösterildi.");
+var list = (OkObjectResult)await Listings(userId).List(default);
+Require(((List<ListingResponse>)list.Value!).All(x => x.Durum != "Gizli"), "Gizli ilan listede gösterildi.");
+Require(await new CategoriesController(db).List(default) is OkObjectResult, "Kategori listesi alınamadı.");
+Console.WriteLine("PASS: PostgreSQL ilan CRUD, kalıcılık, kategori, sahiplik, UTC, gizlilik ve bağlı kayıt silme.");
 
 static void Require(bool condition, string message)
 {
