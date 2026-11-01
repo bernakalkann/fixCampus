@@ -98,7 +98,7 @@ public sealed class ListingsController(FixCampusDbContext db) : ControllerBase
         // Also enforce invariants when called outside the MVC model-validation pipeline.
         var results = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
         System.ComponentModel.DataAnnotations.Validator.TryValidateObject(request,
-            new System.ComponentModel.DataAnnotations.ValidationContext(request), results, true);
+            new System.ComponentModel.DataAnnotations.ValidationContext(request, HttpContext.RequestServices, null), results, true);
         foreach (var result in results)
             foreach (var member in result.MemberNames.DefaultIfEmpty(string.Empty))
                 ModelState.TryAddModelError(member, result.ErrorMessage ?? "Geçersiz alan.");
