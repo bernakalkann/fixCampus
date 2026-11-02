@@ -136,3 +136,41 @@ dotnet run --project tests/FixCampus.AuthorizationChecks
 
 Kontroller gerçek HTTP hattında öğrenci/yönetici erişimini, rol/kimlik taklidini,
 eksik profili, rol değişikliğini, servis kesintisini ve Swagger izinlerini sınar.
+
+---
+
+## 🚀 Hafta 3 — İlan CRUD API, Doğrulama ve Web İlan Sayfaları (Zülfikar Durak)
+
+Platformun temel işlevi olan kampüs ilanlarının (Sosyal Radar buluşmaları ve Kayıp & Buluntu eşya duyuruları) uçtan uca yönetimi, tam CRUD API'si, iş doğrulama kuralları ve web sayfaları tamamlandı.
+
+### Eklenen Yetenekler & Görev Dağılımı
+
+1. **CRUD REST API & Swagger (Berna Kalkan):**
+   - `GET /api/ilanlar`: Tür, kategori, arama metni ve sayfalama destekli ilan listesi.
+   - `GET /api/ilanlar/{id}`: Detaylı ilan bilgisi (sahip, kategori, katılımcı sayısı).
+   - `POST /api/ilanlar`: Oturum açmış kullanıcının kimliğiyle yeni ilan oluşturma (Bearer / Cookie).
+   - `PUT /api/ilanlar/{id}`: İlan güncelleme (yalnızca sahibi veya yönetici düzenleyebilir).
+   - `DELETE /api/ilanlar/{id}`: İlan silme (yalnızca sahibi veya yönetici silebilir).
+   - `GET /api/ilanlar/benim`: Kullanıcının kendi ilanlarını listeleme.
+   - `GET /api/ilanlar/kategoriler`: Türe göre kategorileri getirme.
+
+2. **Web Arayüz Akışları (Berke Mahmut Acar):**
+   - `IlanlarController` ve modern Bootstrap 5 Razor görünümleri:
+     - `Views/Ilanlar/Index.cshtml`: Filtreli ve sayfalanmış ilan akışı.
+     - `Views/Ilanlar/Detay.cshtml`: İlan detay sayfası ve sahiplik butonları.
+     - `Views/Ilanlar/Yeni.cshtml`: Dinamik tür ve kategori seçimli ilan verme formu.
+     - `Views/Ilanlar/Duzenle.cshtml`: İlan güncelleme formu.
+     - `Views/Ilanlar/Benim.cshtml`: Kullanıcının kendi ilanlarını yönetebileceği panel.
+
+3. **İş Doğrulama Kuralları ve Sahiplik Kontrolü (Zülfikar Durak):**
+   - **Tarih Kuralı:** Sosyal ilanlarda `BulusmaTarihi` zorunludur ve gelecek bir zaman olmalıdır; kayıp ve buluntu ilanlarında buluşma tarihi kabul edilmez (null zorunludur).
+   - **Kategori Uyumu:** Seçilen kategorinin türü ile ilanın türü eşleşmelidir.
+   - **Metin Sınırları:** Başlık 3–150 karakter, açıklama 5–3000 karakter, yer 2–200 karakter.
+   - **Sahiplik (403 Forbidden):** Başka bir kullanıcının ilanını düzenleme veya silme denemeleri `403 Forbidden` ile engellenir; yöneticiler denetim amacıyla tüm ilanları yönetebilir.
+
+### Hafta 3 Testlerini Çalıştırma
+
+```powershell
+dotnet run --project tests/FixCampus.ListingChecks
+```
+

@@ -53,6 +53,8 @@ builder.Services.AddDbContext<FixCampusDbContext>(options =>
         options.UseNpgsql(connection);
 });
 builder.Services.AddScoped<DemoListingReader>();
+builder.Services.AddScoped<FixCampus.Web.Services.IListingValidator, FixCampus.Web.Services.ListingValidator>();
+builder.Services.AddScoped<FixCampus.Web.Services.IListingService, FixCampus.Web.Services.ListingService>();
 
 var app = builder.Build();
 

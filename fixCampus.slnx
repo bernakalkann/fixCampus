@@ -4,6 +4,7 @@
     <Project Path="tests/FixCampus.AuthChecks/FixCampus.AuthChecks.csproj" />
     <Project Path="tests/FixCampus.AuthorizationChecks/FixCampus.AuthorizationChecks.csproj" />
     <Project Path="tests/FixCampus.DatabaseChecks/FixCampus.DatabaseChecks.csproj" />
+    <Project Path="tests/FixCampus.ListingChecks/FixCampus.ListingChecks.csproj" />
     <Project Path="tests/FixCampus.LiveChecks/FixCampus.LiveChecks.csproj" />
   </Folder>
   <Project Path="src/FixCampus.Web/FixCampus.Web.csproj" />

@@ -1,0 +1,156 @@
+@model FixCampus.Web.Models.ListingFormViewModel
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="mb-3">
+                <a asp-action="Index" class="text-decoration-none text-muted small">
+                    <i class="bi bi-arrow-left me-1"></i> İlanlar Listesine Dön
+                </a>
+            </div>
+
+            <div class="card border rounded-4 shadow-sm bg-white p-4 p-md-5">
+                <div class="mb-4">
+                    <h2 class="fw-bold text-dark mb-1">Yeni Kampüs İlanı Oluştur</h2>
+                    <p class="text-muted small">Sosyal buluşma organize edin ya da kayıp/buluntu eşya duyurusu paylaşın.</p>
+                </div>
+
+                @if (!ViewData.ModelState.IsValid)
+                {
+                    <div class="alert alert-danger border-0 rounded-3 shadow-sm mb-4 small" role="alert">
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <i class="bi bi-exclamation-triangle-fill"></i>
+                            <strong>Lütfen formdaki hataları düzeltin:</strong>
+                        </div>
+                        <div asp-validation-summary="All" class="text-danger ps-4 mb-0"></div>
+                    </div>
+                }
+
+                <form asp-action="Yeni" method="post" id="listingForm">
+                    @Html.AntiForgeryToken()
+
+                    <!-- İlan Türü Seçimi -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold small text-dark">İlan Türü Seçiniz</label>
+                        <div class="row g-2">
+                            <div class="col-4">
+                                <input type="radio" class="btn-check" name="Tur" id="turSosyal" value="Sosyal" @(Model.Tur == "Sosyal" ? "checked" : "") onchange="updateFormForType('Sosyal')">
+                                <label class="btn btn-outline-primary w-100 py-2 rounded-3 small fw-semibold" for="turSosyal">
+                                    <i class="bi bi-people-fill d-block fs-5 mb-1"></i> Sosyal Radar
+                                </label>
+                            </div>
+                            <div class="col-4">
+                                <input type="radio" class="btn-check" name="Tur" id="turKayip" value="Kayip" @(Model.Tur == "Kayip" ? "checked" : "") onchange="updateFormForType('Kayip')">
+                                <label class="btn btn-outline-danger w-100 py-2 rounded-3 small fw-semibold" for="turKayip">
+                                    <i class="bi bi-question-circle-fill d-block fs-5 mb-1"></i> Kayıp Eşya
+                                </label>
+                            </div>
+                            <div class="col-4">
+                                <input type="radio" class="btn-check" name="Tur" id="turBuluntu" value="Buluntu" @(Model.Tur == "Buluntu" ? "checked" : "") onchange="updateFormForType('Buluntu')">
+                                <label class="btn btn-outline-success w-100 py-2 rounded-3 small fw-semibold" for="turBuluntu">
+                                    <i class="bi bi-check-circle-fill d-block fs-5 mb-1"></i> Buluntu Eşya
+                                </label>
+                            </div>
+                        </div>
+                        <span asp-validation-for="Tur" class="text-danger small"></span>
+                    </div>
+
+                    <!-- Kategori Seçimi -->
+                    <div class="mb-3">
+                        <label asp-for="KategoriId" class="form-label fw-bold small text-dark">Kategori</label>
+                        <select asp-for="KategoriId" class="form-select" id="kategoriSelect" required>
+                            <option value="">Lütfen kategori seçiniz</option>
+                            @foreach (var cat in Model.AvailableCategories)
+                            {
+                                <option value="@cat.Id" data-tur="@cat.Tur" selected="@(Model.KategoriId == cat.Id)">@cat.Ad</option>
+                            }
+                        </select>
+                        <span asp-validation-for="KategoriId" class="text-danger small"></span>
+                    </div>
+
+                    <!-- İlan Başlığı -->
+                    <div class="mb-3">
+                        <label asp-for="Baslik" class="form-label fw-bold small text-dark">İlan Başlığı</label>
+                        <input asp-for="Baslik" class="form-control" placeholder="Örn: Kütüphane 2. Kat Matematik Soru Çözümü" maxlength="150" required />
+                        <span asp-validation-for="Baslik" class="text-danger small"></span>
+                        <div class="form-text small">Anlaşılır ve kısa bir başlık giriniz (en fazla 150 karakter).</div>
+                    </div>
+
+                    <!-- Buluşma Tarihi ve Saati (Yalnızca Sosyal Buluşmalar İçin) -->
+                    <div class="mb-3" id="bulusmaTarihiContainer">
+                        <label asp-for="BulusmaZamani" class="form-label fw-bold small text-dark">Buluşma Tarihi ve Saati <span class="text-danger">*</span></label>
+                        <input asp-for="BulusmaZamani" type="datetime-local" class="form-control" id="bulusmaZamaniInput" />
+                        <span asp-validation-for="BulusmaZamani" class="text-danger small"></span>
+                        <div class="form-text small text-primary">Sosyal buluşmalar için gelecek bir tarih ve saat seçilmelidir.</div>
+                    </div>
+
+                    <!-- Konum / Yer Bilgisi -->
+                    <div class="mb-3">
+                        <label asp-for="Yer" class="form-label fw-bold small text-dark">Buluşma Yeri / Eşyanın Bulunduğu Yer</label>
+                        <input asp-for="Yer" class="form-control" placeholder="Örn: Mühendislik Fakültesi D-Blok Giriş Katı" maxlength="200" required />
+                        <span asp-validation-for="Yer" class="text-danger small"></span>
+                    </div>
+
+                    <!-- Detaylı Açıklama -->
+                    <div class="mb-4">
+                        <label asp-for="Aciklama" class="form-label fw-bold small text-dark">Detaylı Açıklama</label>
+                        <textarea asp-for="Aciklama" class="form-control" rows="5" placeholder="Buluşma içeriği, iletişim notları veya eşyanın belirgin özellikleri hakkında ayrıntı veriniz..." maxlength="3000" required></textarea>
+                        <span asp-validation-for="Aciklama" class="text-danger small"></span>
+                    </div>
+
+                    <!-- Gönder Butonu -->
+                    <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+                        <a asp-action="Index" class="btn btn-outline-secondary px-4 rounded-pill">Vazgeç</a>
+                        <button type="submit" class="btn btn-dark px-4 rounded-pill">
+                            <i class="bi bi-check-lg me-1"></i> İlanı Yayınla
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        function updateFormForType(type) {
+            const bulusmaContainer = document.getElementById('bulusmaTarihiContainer');
+            const bulusmaInput = document.getElementById('bulusmaZamaniInput');
+            const kategoriSelect = document.getElementById('kategoriSelect');
+
+            if (type === 'Sosyal') {
+                bulusmaContainer.style.display = 'block';
+                bulusmaInput.required = true;
+            } else {
+                bulusmaContainer.style.display = 'none';
+                bulusmaInput.required = false;
+                bulusmaInput.value = '';
+            }
+
+            // Kategori seçeneklerini türüne göre filtrele
+            fetch(`/api/ilanlar/kategoriler?tur=${type}`)
+                .then(res => res.json())
+                .then(data => {
+                    kategoriSelect.innerHTML = '<option value="">Lütfen kategori seçiniz</option>';
+                    data.forEach(cat => {
+                        const opt = document.createElement('option');
+                        opt.value = cat.id;
+                        opt.textContent = cat.ad;
+                        kategoriSelect.appendChild(opt);
+                    });
+                })
+                .catch(err => console.error('Kategoriler yüklenemedi', err));
+        }
+
+        // Sayfa yüklendiğinde mevcut türe göre görünümü ayarla
+        document.addEventListener('DOMContentLoaded', () => {
+            const currentType = document.querySelector('input[name="Tur"]:checked')?.value || 'Sosyal';
+            const bulusmaContainer = document.getElementById('bulusmaTarihiContainer');
+            if (currentType !== 'Sosyal') {
+                bulusmaContainer.style.display = 'none';
+            }
+        });
+    </script>
+}
+

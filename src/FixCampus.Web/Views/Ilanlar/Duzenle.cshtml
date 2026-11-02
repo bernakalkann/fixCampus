@@ -1,0 +1,119 @@
+@model FixCampus.Web.Models.ListingFormViewModel
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="mb-3">
+                <a asp-action="Detay" asp-route-id="@Model.Id" class="text-decoration-none text-muted small">
+                    <i class="bi bi-arrow-left me-1"></i> İlan Detayına Dön
+                </a>
+            </div>
+
+            <div class="card border rounded-4 shadow-sm bg-white p-4 p-md-5">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h2 class="fw-bold text-dark mb-1">İlanı Düzenle</h2>
+                        <p class="text-muted small mb-0">İlan detaylarını ve durumunu güncelleyin.</p>
+                    </div>
+                    <span class="badge @(Model.Tur switch {
+                        "Sosyal" => "bg-primary-subtle text-primary border border-primary-subtle",
+                        "Kayip" => "bg-danger-subtle text-danger border border-danger-subtle",
+                        "Buluntu" => "bg-success-subtle text-success border border-success-subtle",
+                        _ => "bg-light text-dark border"
+                    }) px-3 py-2 rounded-pill fw-semibold">
+                        @(Model.Tur switch {
+                            "Sosyal" => "Sosyal Radar",
+                            "Kayip" => "Kayıp Eşya",
+                            "Buluntu" => "Buluntu Eşya",
+                            _ => Model.Tur
+                        })
+                    </span>
+                </div>
+
+                @if (!ViewData.ModelState.IsValid)
+                {
+                    <div class="alert alert-danger border-0 rounded-3 shadow-sm mb-4 small" role="alert">
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <i class="bi bi-exclamation-triangle-fill"></i>
+                            <strong>Lütfen formdaki hataları düzeltin:</strong>
+                        </div>
+                        <div asp-validation-summary="All" class="text-danger ps-4 mb-0"></div>
+                    </div>
+                }
+
+                <form asp-action="Duzenle" asp-route-id="@Model.Id" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" asp-for="Id" />
+                    <input type="hidden" asp-for="Tur" />
+
+                    <!-- Kategori Seçimi -->
+                    <div class="mb-3">
+                        <label asp-for="KategoriId" class="form-label fw-bold small text-dark">Kategori</label>
+                        <select asp-for="KategoriId" class="form-select" required>
+                            @foreach (var cat in Model.AvailableCategories)
+                            {
+                                <option value="@cat.Id" selected="@(Model.KategoriId == cat.Id)">@cat.Ad</option>
+                            }
+                        </select>
+                        <span asp-validation-for="KategoriId" class="text-danger small"></span>
+                    </div>
+
+                    <!-- İlan Durumu -->
+                    <div class="mb-3">
+                        <label asp-for="Durum" class="form-label fw-bold small text-dark">İlan Durumu</label>
+                        <select asp-for="Durum" class="form-select">
+                            <option value="Aktif" selected="@(Model.Durum == "Aktif")">Aktif (Yayında)</option>
+                            <option value="Cozuldu" selected="@(Model.Durum == "Cozuldu")">Çözüldü / Tamamlandı</option>
+                            <option value="Gizli" selected="@(Model.Durum == "Gizli")">Gizli (Yayından Kaldırıldı)</option>
+                        </select>
+                        <span asp-validation-for="Durum" class="text-danger small"></span>
+                    </div>
+
+                    <!-- İlan Başlığı -->
+                    <div class="mb-3">
+                        <label asp-for="Baslik" class="form-label fw-bold small text-dark">İlan Başlığı</label>
+                        <input asp-for="Baslik" class="form-control" maxlength="150" required />
+                        <span asp-validation-for="Baslik" class="text-danger small"></span>
+                    </div>
+
+                    <!-- Buluşma Tarihi ve Saati (Yalnızca Sosyal Buluşmalar İçin) -->
+                    @if (Model.Tur == "Sosyal")
+                    {
+                        <div class="mb-3">
+                            <label asp-for="BulusmaZamani" class="form-label fw-bold small text-dark">Buluşma Tarihi ve Saati <span class="text-danger">*</span></label>
+                            <input asp-for="BulusmaZamani" type="datetime-local" class="form-control" required />
+                            <span asp-validation-for="BulusmaZamani" class="text-danger small"></span>
+                        </div>
+                    }
+
+                    <!-- Konum / Yer Bilgisi -->
+                    <div class="mb-3">
+                        <label asp-for="Yer" class="form-label fw-bold small text-dark">Buluşma Yeri / Eşyanın Bulunduğu Yer</label>
+                        <input asp-for="Yer" class="form-control" maxlength="200" required />
+                        <span asp-validation-for="Yer" class="text-danger small"></span>
+                    </div>
+
+                    <!-- Detaylı Açıklama -->
+                    <div class="mb-4">
+                        <label asp-for="Aciklama" class="form-label fw-bold small text-dark">Detaylı Açıklama</label>
+                        <textarea asp-for="Aciklama" class="form-control" rows="5" maxlength="3000" required></textarea>
+                        <span asp-validation-for="Aciklama" class="text-danger small"></span>
+                    </div>
+
+                    <!-- Butonlar -->
+                    <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+                        <a asp-action="Detay" asp-route-id="@Model.Id" class="btn btn-outline-secondary px-4 rounded-pill">Vazgeç</a>
+                        <button type="submit" class="btn btn-dark px-4 rounded-pill">
+                            <i class="bi bi-check-lg me-1"></i> Değişiklikleri Kaydet
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
+

@@ -40,35 +40,35 @@
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "Radar" ? "active" : "")" 
-                                   asp-area="" asp-controller="Home" asp-action="Radar">
+                                <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Ilanlar" && Context.Request.Query["tur"] == "Sosyal" ? "active" : "")" 
+                                   asp-area="" asp-controller="Ilanlar" asp-action="Index" asp-route-tur="Sosyal">
                                     Sosyal Radar
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "LostFound" ? "active" : "")" 
-                                   asp-area="" asp-controller="Home" asp-action="LostFound">
+                                <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Ilanlar" && (Context.Request.Query["tur"] == "Kayip" || Context.Request.Query["tur"] == "Buluntu") ? "active" : "")" 
+                                   asp-area="" asp-controller="Ilanlar" asp-action="Index" asp-route-tur="Kayip">
                                     Kayıp & Buluntu
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link @(ViewContext.RouteData.Values["Action"]?.ToString() == "Ads" ? "active" : "")" 
-                                   asp-area="" asp-controller="Home" asp-action="Ads">
+                                <a class="nav-link @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Ilanlar" && string.IsNullOrEmpty(Context.Request.Query["tur"]) ? "active" : "")" 
+                                   asp-area="" asp-controller="Ilanlar" asp-action="Index">
                                     Tüm İlanlar
                                 </a>
                             </li>
                         </ul>
                         
                         <!-- Filtreleme ve Arama Çubuğu -->
-                        <form asp-controller="Home" asp-action="Ads" method="get" class="fc-nav-filter my-2 my-lg-0 me-lg-3">
+                        <form asp-controller="Ilanlar" asp-action="Index" method="get" class="fc-nav-filter my-2 my-lg-0 me-lg-3">
                             <div class="input-group input-group-sm">
-                                <select name="type" class="form-select form-select-sm" style="max-width: 135px; font-size: 0.82rem; font-weight: 500;">
+                                <select name="tur" class="form-select form-select-sm" style="max-width: 135px; font-size: 0.82rem; font-weight: 500;">
                                     <option value="">Tüm İlanlar</option>
-                                    <option value="radar" selected="@(Context.Request.Query["type"] == "radar")">Sosyal Radar</option>
-                                    <option value="lost" selected="@(Context.Request.Query["type"] == "lost")">Kayıp Eşya</option>
-                                    <option value="found" selected="@(Context.Request.Query["type"] == "found")">Buluntu Eşya</option>
+                                    <option value="Sosyal" selected="@(Context.Request.Query["tur"] == "Sosyal")">Sosyal Radar</option>
+                                    <option value="Kayip" selected="@(Context.Request.Query["tur"] == "Kayip")">Kayıp Eşya</option>
+                                    <option value="Buluntu" selected="@(Context.Request.Query["tur"] == "Buluntu")">Buluntu Eşya</option>
                                 </select>
-                                <input type="text" name="search" value="@Context.Request.Query["search"]" class="form-control form-control-sm" placeholder="İlanlarda ara..." style="min-width: 140px; max-width: 200px; font-size: 0.82rem;" />
+                                <input type="text" name="q" value="@Context.Request.Query["q"]" class="form-control form-control-sm" placeholder="İlanlarda ara..." style="min-width: 140px; max-width: 200px; font-size: 0.82rem;" />
                                 <button class="btn btn-sm" type="submit" title="Filtrele">
                                     <i class="bi bi-search"></i>
                                 </button>
@@ -90,7 +90,7 @@
                                 </a>
                             }
 
-                            <a asp-controller="Home" asp-action="Ads" class="btn btn-dark btn-sm px-3">
+                            <a asp-controller="Ilanlar" asp-action="Yeni" class="btn btn-dark btn-sm px-3">
                                 İlan Ver
                             </a>
 
@@ -118,7 +118,7 @@
                                         </a>
                                     </li>
                                     <li>
-                                        <a class="dropdown-item py-2 small d-flex align-items-center gap-2" asp-controller="Home" asp-action="Ads">
+                                        <a class="dropdown-item py-2 small d-flex align-items-center gap-2" asp-controller="Ilanlar" asp-action="Benim">
                                             <i class="bi bi-collection text-muted"></i> İlanlarım
                                         </a>
                                     </li>
@@ -155,6 +155,15 @@
             <div class="alert alert-success border-0 shadow-sm rounded-4 d-flex align-items-center gap-2" role="alert">
                 <i class="bi bi-check-circle-fill fs-5 text-success"></i>
                 <div>@TempData["SuccessMessage"]</div>
+            </div>
+        </div>
+    }
+    @if (TempData["ErrorMessage"] != null && ViewContext.RouteData.Values["Controller"]?.ToString() != "Account")
+    {
+        <div class="container mt-3">
+            <div class="alert alert-danger border-0 shadow-sm rounded-4 d-flex align-items-center gap-2" role="alert">
+                <i class="bi bi-exclamation-triangle-fill fs-5 text-danger"></i>
+                <div>@TempData["ErrorMessage"]</div>
             </div>
         </div>
     }
