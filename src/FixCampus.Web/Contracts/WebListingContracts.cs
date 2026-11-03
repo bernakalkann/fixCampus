@@ -4,11 +4,11 @@ namespace FixCampus.Web.Contracts;
 
 public sealed record CreateListingRequest(
     [Required(ErrorMessage = "Başlık zorunludur.")]
-    [StringLength(150, MinimumLength = 3, ErrorMessage = "Başlık 3 ile 150 karakter arasında olmalıdır.")]
+    [StringLength(150, MinimumLength = 2, ErrorMessage = "Başlık 2 ile 150 karakter arasında olmalıdır.")]
     string Baslik,
 
     [Required(ErrorMessage = "Açıklama zorunludur.")]
-    [StringLength(3000, MinimumLength = 5, ErrorMessage = "Açıklama 5 ile 3000 karakter arasında olmalıdır.")]
+    [StringLength(3000, MinimumLength = 1, ErrorMessage = "Açıklama en fazla 3000 karakter olabilir.")]
     string Aciklama,
 
     [Required(ErrorMessage = "İlan türü zorunludur.")]
@@ -18,7 +18,7 @@ public sealed record CreateListingRequest(
     Guid KategoriId,
 
     [Required(ErrorMessage = "Yer/Konum bilgisi zorunludur.")]
-    [StringLength(200, MinimumLength = 2, ErrorMessage = "Yer 2 ile 200 karakter arasında olmalıdır.")]
+    [StringLength(200, MinimumLength = 1, ErrorMessage = "Yer en fazla 200 karakter olabilir.")]
     string Yer,
 
     DateTimeOffset? BulusmaTarihi
@@ -26,23 +26,23 @@ public sealed record CreateListingRequest(
 
 public sealed record UpdateListingRequest(
     [Required(ErrorMessage = "Başlık zorunludur.")]
-    [StringLength(150, MinimumLength = 3, ErrorMessage = "Başlık 3 ile 150 karakter arasında olmalıdır.")]
+    [StringLength(150, MinimumLength = 2, ErrorMessage = "Başlık 2 ile 150 karakter arasında olmalıdır.")]
     string Baslik,
 
     [Required(ErrorMessage = "Açıklama zorunludur.")]
-    [StringLength(3000, MinimumLength = 5, ErrorMessage = "Açıklama 5 ile 3000 karakter arasında olmalıdır.")]
+    [StringLength(3000, MinimumLength = 1, ErrorMessage = "Açıklama en fazla 3000 karakter olabilir.")]
     string Aciklama,
 
     [Required(ErrorMessage = "Kategori seçimi zorunludur.")]
     Guid KategoriId,
 
     [Required(ErrorMessage = "Yer/Konum bilgisi zorunludur.")]
-    [StringLength(200, MinimumLength = 2, ErrorMessage = "Yer 2 ile 200 karakter arasında olmalıdır.")]
+    [StringLength(200, MinimumLength = 1, ErrorMessage = "Yer en fazla 200 karakter olabilir.")]
     string Yer,
 
     DateTimeOffset? BulusmaTarihi,
 
-    string? Durum = "Aktif"
+    string? Tur = null
 );
 
 public sealed record ListingSummaryResponse(

@@ -1,128 +1,138 @@
 using FixCampus.Web.Contracts;
 using FixCampus.Web.Data;
-using FixCampus.Web.Models.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace FixCampus.Web.Services;
 
-public sealed record ValidationOutcome(bool IsValid, string? ErrorMessage = null)
+public sealed record ListingValidationResult(bool IsValid, string? ErrorMessage = null)
 {
-    public static ValidationOutcome Success() => new(true);
-    public static ValidationOutcome Failed(string message) => new(false, message);
+    public static ListingValidationResult Success() => new(true);
+    public static ListingValidationResult Fail(string error) => new(false, error);
 }
 
 public interface IListingValidator
 {
-    Task<ValidationOutcome> ValidateCreateAsync(CreateListingRequest request, CancellationToken ct = default);
-    Task<ValidationOutcome> ValidateUpdateAsync(Ilan existing, UpdateListingRequest request, CancellationToken ct = default);
+    Task<ListingValidationResult> ValidateCreateAsync(CreateListingRequest request, CancellationToken ct = default);
+    Task<ListingValidationResult> ValidateUpdateAsync(UpdateListingRequest request, string existingTur, CancellationToken ct = default);
 }
 
-public sealed class ListingValidator(FixCampusDbContext db) : IListingValidator
+public sealed class ListingValidator(FixCampusDbContext db, TimeProvider? clock = null) : IListingValidator
 {
-    private static readonly HashSet<string> ValidTypes = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<string> AllowedTypes = new(StringComparer.Ordinal)
     {
-        "Sosyal", "Kayip", "Buluntu"
+        "Sosyal",
+        "Kayip",
+        "Buluntu"
     };
 
-    private static readonly HashSet<string> ValidStatuses = new(StringComparer.OrdinalIgnoreCase)
+    private readonly TimeProvider _clock = clock ?? TimeProvider.System;
+
+    public async Task<ListingValidationResult> ValidateCreateAsync(CreateListingRequest request, CancellationToken ct = default)
     {
-        "Aktif", "Cozuldu", "Gizli"
-    };
-
-    public async Task<ValidationOutcome> ValidateCreateAsync(CreateListingRequest request, CancellationToken ct = default)
-    {
-        if (string.IsNullOrWhiteSpace(request.Baslik) || request.Baslik.Trim().Length < 3 || request.Baslik.Length > 150)
-            return ValidationOutcome.Failed("İlan başlığı 3 ile 150 karakter arasında olmalıdır.");
-
-        if (string.IsNullOrWhiteSpace(request.Aciklama) || request.Aciklama.Trim().Length < 5 || request.Aciklama.Length > 3000)
-            return ValidationOutcome.Failed("İlan açıklaması 5 ile 3000 karakter arasında olmalıdır.");
-
-        if (string.IsNullOrWhiteSpace(request.Yer) || request.Yer.Trim().Length < 2 || request.Yer.Length > 200)
-            return ValidationOutcome.Failed("Konum/Yer bilgisi 2 ile 200 karakter arasında olmalıdır.");
-
-        if (string.IsNullOrWhiteSpace(request.Tur) || !ValidTypes.Contains(request.Tur))
-            return ValidationOutcome.Failed("Geçersiz ilan türü. İlan türü 'Sosyal', 'Kayip' veya 'Buluntu' olmalıdır.");
-
-        var turNormalized = char.ToUpperInvariant(request.Tur[0]) + request.Tur.Substring(1).ToLowerInvariant();
-        if (turNormalized == "Sosyal")
-        {
-            if (request.BulusmaTarihi is null)
-                return ValidationOutcome.Failed("Sosyal buluşma ilanları için buluşma tarihi zorunludur.");
-
-            if (request.BulusmaTarihi.Value <= DateTimeOffset.UtcNow)
-                return ValidationOutcome.Failed("Sosyal buluşma tarihi ileri bir tarih ve saat olmalıdır.");
-        }
-        else
-        {
-            if (request.BulusmaTarihi is not null)
-                return ValidationOutcome.Failed("Kayıp ve buluntu ilanlarında buluşma tarihi belirtilemez.");
-        }
-
-        // Kategori varlığı ve tür uyumu denetimi
-        Kategori? category = null;
-        try
-        {
-            category = await db.Kategoriler.AsNoTracking().SingleOrDefaultAsync(k => k.Id == request.KategoriId, ct);
-        }
-        catch
-        {
-            // Veritabanı çevrimdışıysa varsayılan katalogdan kontrol et
-        }
-        category ??= DefaultCategories.Items.FirstOrDefault(k => k.Id == request.KategoriId);
-
-        if (category is null)
-            return ValidationOutcome.Failed("Seçilen kategori sistemde bulunamadı.");
-
-        if (!string.Equals(category.Tur, request.Tur, StringComparison.OrdinalIgnoreCase))
-            return ValidationOutcome.Failed($"Seçilen kategori '{category.Tur}' türündedir, ancak ilan '{request.Tur}' türünde açılmaktadır. Kategori ve ilan türü eşleşmelidir.");
-
-        return ValidationOutcome.Success();
+        return await ValidateCommonAsync(
+            request.Baslik,
+            request.Aciklama,
+            request.Tur,
+            request.KategoriId,
+            request.Yer,
+            request.BulusmaTarihi,
+            ct);
     }
 
-    public async Task<ValidationOutcome> ValidateUpdateAsync(Ilan existing, UpdateListingRequest request, CancellationToken ct = default)
+    public async Task<ListingValidationResult> ValidateUpdateAsync(UpdateListingRequest request, string existingTur, CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(request.Baslik) || request.Baslik.Trim().Length < 3 || request.Baslik.Length > 150)
-            return ValidationOutcome.Failed("İlan başlığı 3 ile 150 karakter arasında olmalıdır.");
+        var effectiveTur = string.IsNullOrWhiteSpace(request.Tur) ? existingTur : request.Tur;
 
-        if (string.IsNullOrWhiteSpace(request.Aciklama) || request.Aciklama.Trim().Length < 5 || request.Aciklama.Length > 3000)
-            return ValidationOutcome.Failed("İlan açıklaması 5 ile 3000 karakter arasında olmalıdır.");
+        return await ValidateCommonAsync(
+            request.Baslik,
+            request.Aciklama,
+            effectiveTur,
+            request.KategoriId,
+            request.Yer,
+            request.BulusmaTarihi,
+            ct);
+    }
 
-        if (string.IsNullOrWhiteSpace(request.Yer) || request.Yer.Trim().Length < 2 || request.Yer.Length > 200)
-            return ValidationOutcome.Failed("Konum/Yer bilgisi 2 ile 200 karakter arasında olmalıdır.");
-
-        if (!string.IsNullOrWhiteSpace(request.Durum) && !ValidStatuses.Contains(request.Durum))
-            return ValidationOutcome.Failed("Geçersiz ilan durumu. Durum 'Aktif', 'Cozuldu' veya 'Gizli' olmalıdır.");
-
-        if (string.Equals(existing.Tur, "Sosyal", StringComparison.OrdinalIgnoreCase))
+    private async Task<ListingValidationResult> ValidateCommonAsync(
+        string? baslik,
+        string? aciklama,
+        string? tur,
+        Guid kategoriId,
+        string? yer,
+        DateTimeOffset? bulusmaTarihi,
+        CancellationToken ct)
+    {
+        var trimmedTitle = baslik?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(trimmedTitle) || trimmedTitle.Length < 2 || baslik!.Length > 150)
         {
-            if (request.BulusmaTarihi is null)
-                return ValidationOutcome.Failed("Sosyal buluşma ilanları için buluşma tarihi zorunludur.");
-        }
-        else
-        {
-            if (request.BulusmaTarihi is not null)
-                return ValidationOutcome.Failed("Kayıp ve buluntu ilanlarında buluşma tarihi belirtilemez.");
+            return ListingValidationResult.Fail("Başlık alanı zorunludur ve 2 ile 150 karakter arasında olmalıdır.");
         }
 
-        // Kategori varlığı ve tür uyumu denetimi
-        Kategori? category = null;
+        var trimmedDescription = aciklama?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(trimmedDescription) || aciklama!.Length > 3000)
+        {
+            return ListingValidationResult.Fail("Açıklama alanı zorunludur ve en fazla 3000 karakter olabilir.");
+        }
+
+        var trimmedPlace = yer?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(trimmedPlace) || yer!.Length > 200)
+        {
+            return ListingValidationResult.Fail("Yer/Konum alanı zorunludur ve en fazla 200 karakter olabilir.");
+        }
+
+        var trimmedType = tur?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(trimmedType) || !AllowedTypes.Contains(trimmedType))
+        {
+            return ListingValidationResult.Fail("İlan türü yalnızca 'Sosyal', 'Kayip' veya 'Buluntu' olabilir.");
+        }
+
+        if (trimmedType == "Sosyal")
+        {
+            if (bulusmaTarihi is null)
+            {
+                return ListingValidationResult.Fail("Sosyal buluşma ilanları için buluşma tarihi ve saati zorunludur.");
+            }
+
+            if (bulusmaTarihi.Value <= _clock.GetUtcNow())
+            {
+                return ListingValidationResult.Fail("Sosyal buluşma tarihi gelecekte bir zaman olmalıdır.");
+            }
+        }
+        else if (trimmedType is "Kayip" or "Buluntu")
+        {
+            if (bulusmaTarihi is not null)
+            {
+                return ListingValidationResult.Fail("Kayıp ve buluntu ilanlarında buluşma tarihi belirtilemez (boş bırakılmalıdır).");
+            }
+        }
+
+        if (kategoriId == Guid.Empty)
+        {
+            return ListingValidationResult.Fail("Geçerli bir kategori seçilmelidir.");
+        }
+
+        Models.Entities.Kategori? kategori;
         try
         {
-            category = await db.Kategoriler.AsNoTracking().SingleOrDefaultAsync(k => k.Id == request.KategoriId, ct);
+            kategori = await db.Kategoriler
+                .AsNoTracking()
+                .FirstOrDefaultAsync(k => k.Id == kategoriId, ct);
         }
         catch
         {
-            // Veritabanı çevrimdışıysa varsayılan katalogdan kontrol et
+            return ListingValidationResult.Fail("Kategori doğrulanamadı; veritabanı bağlantısı kurulamadı.");
         }
-        category ??= DefaultCategories.Items.FirstOrDefault(k => k.Id == request.KategoriId);
 
-        if (category is null)
-            return ValidationOutcome.Failed("Seçilen kategori sistemde bulunamadı.");
+        if (kategori is null)
+        {
+            return ListingValidationResult.Fail("Seçilen kategori sistemde bulunamadı.");
+        }
 
-        if (!string.Equals(category.Tur, existing.Tur, StringComparison.OrdinalIgnoreCase))
-            return ValidationOutcome.Failed($"Seçilen kategori '{category.Tur}' türündedir, ancak ilan '{existing.Tur}' türündedir. Kategori ve ilan türü eşleşmelidir.");
+        if (!string.Equals(kategori.Tur, trimmedType, StringComparison.Ordinal))
+        {
+            return ListingValidationResult.Fail($"Seçilen kategori '{kategori.Tur}' türüne aittir, '{trimmedType}' ilanı ile eşleşmiyor.");
+        }
 
-        return ValidationOutcome.Success();
+        return ListingValidationResult.Success();
     }
 }
-
