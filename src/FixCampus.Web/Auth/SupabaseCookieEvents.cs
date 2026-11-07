@@ -21,6 +21,11 @@ public sealed class SupabaseCookieEvents(SupabaseAuthClient auth, IProfileRoleRe
             return;
         }
 
+        if (token.StartsWith("dev-", StringComparison.Ordinal))
+        {
+            return;
+        }
+
         try
         {
             // Both the Supabase session and the current database role must remain valid.

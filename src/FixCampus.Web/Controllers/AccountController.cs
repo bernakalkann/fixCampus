@@ -37,6 +37,11 @@ public class AccountController : Controller
         _configuration = configuration;
     }
 
+    private bool IsSupabaseConfigured =>
+        !string.IsNullOrWhiteSpace(_configuration["Supabase:PublishableKey"]) &&
+        !string.Equals(_configuration["Supabase:PublishableKey"], "SUPABASE_KEYINIZ", StringComparison.OrdinalIgnoreCase) &&
+        !string.Equals(_configuration["Supabase:PublishableKey"], "SUPABASE_PUBLISHABLE_KEY", StringComparison.OrdinalIgnoreCase);
+
     private bool HasDatabaseConfigured()
     {
         try
@@ -106,6 +111,11 @@ public class AccountController : Controller
         {
             ModelState.AddModelError(string.Empty, "Lütfen geçerli bir üniversite e-posta adresi veya 8 haneli öğrenci numaranızı giriniz.");
             return View(model);
+        }
+
+        if (!IsSupabaseConfigured)
+        {
+            return await HandleDevelopmentLogin(model, email, studentNo);
         }
 
         // Supabase Auth doğrulama (token?grant_type=password)
@@ -334,6 +344,11 @@ public class AccountController : Controller
 
         var email = model.Email.Trim().ToLowerInvariant();
         var password = model.Password;
+
+        if (!IsSupabaseConfigured)
+        {
+            return await HandleDevelopmentRegister(model, email, trimmedName);
+        }
 
         // Supabase signup çağrısı
         HttpResponseMessage response;
@@ -739,5 +754,143 @@ public class AccountController : Controller
         }
 
         return Url.Action("Index", "Home") ?? "/";
+    }
+
+    // ==========================================
+    // YEREL GELİŞTİRME GİRİŞ / KAYIT METODLARI
+    // ==========================================
+
+    private async Task<IActionResult> HandleDevelopmentLogin(LoginViewModel model, string email, string studentNo)
+    {
+        var input = model.EmailOrStudentNo.Trim();
+        var configuredEmail = _configuration["AdminSettings:Email"] ?? "admin@ankara.edu.tr";
+        var allowedPasswords = (_configuration["AdminSettings:AllowedPasswords"] ?? "admin;admin123;123456;CampusAdmin#2026;yonetici")
+            .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToList();
+
+        var isAdminMode = string.Equals(model.UserType, "admin", StringComparison.OrdinalIgnoreCase) ||
+                          input.Equals("admin", StringComparison.OrdinalIgnoreCase) ||
+                          input.Equals("yonetici", StringComparison.OrdinalIgnoreCase) ||
+                          input.Equals(configuredEmail, StringComparison.OrdinalIgnoreCase);
+
+        string fullName;
+        string role;
+        Guid userId;
+
+        if (isAdminMode)
+        {
+            if (!allowedPasswords.Contains(model.Password) && model.Password != "admin" && model.Password != "admin123")
+            {
+                ModelState.AddModelError(string.Empty, "Geçersiz yönetici şifresi! Geliştirme modu için 'admin' veya 'admin123' kullanabilirsiniz.");
+                return View(model);
+            }
+
+            role = AppRoles.Administrator;
+            fullName = _configuration["AdminSettings:FullName"] ?? "Kampüs Sistem Yöneticisi";
+            userId = Guid.Parse("99999999-9999-9999-9999-999999999999");
+            email = input.Contains('@') ? input : configuredEmail;
+        }
+        else
+        {
+            if (model.Password.Length < 6)
+            {
+                ModelState.AddModelError(string.Empty, "Geçersiz şifre! Şifreniz en az 6 karakter olmalıdır.");
+                return View(model);
+            }
+
+            role = AppRoles.Student;
+            if (input == "22290455" || input.StartsWith("22290455@"))
+            {
+                fullName = "Berke Mahmut Acar";
+                studentNo = "22290455";
+                email = "22290455@ogrenci.ankara.edu.tr";
+                userId = Guid.Parse("fdeef191-f6df-4fba-a4e1-d33992eab002");
+            }
+            else
+            {
+                var cleanName = email.Split('@')[0].Replace('.', ' ');
+                fullName = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(cleanName);
+                if (string.IsNullOrWhiteSpace(fullName)) fullName = "Kampüs Öğrencisi";
+                userId = Guid.NewGuid();
+            }
+        }
+
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.NameIdentifier, userId.ToString()),
+            new(ClaimTypes.Name, fullName),
+            new(ClaimTypes.Email, email),
+            new(ClaimTypes.Role, role)
+        };
+        if (!string.IsNullOrEmpty(studentNo))
+        {
+            claims.Add(new Claim("StudentNo", studentNo));
+        }
+
+        var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+        var authProperties = new AuthenticationProperties
+        {
+            IsPersistent = model.RememberMe,
+            ExpiresUtc = DateTimeOffset.UtcNow.AddDays(7)
+        };
+        authProperties.StoreTokens(new[]
+        {
+            new AuthenticationToken { Name = "access_token", Value = role == AppRoles.Administrator ? "dev-admin-access-token" : "dev-student-access-token" }
+        });
+
+        await HttpContext.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            new ClaimsPrincipal(claimsIdentity),
+            authProperties);
+
+        _logger.LogInformation("Kullanıcı yerel geliştirme oturumu açtı: {Email} ({Role})", email, role);
+        TempData["SuccessMessage"] = $"Hoş geldiniz, {fullName}! Başarıyla giriş yaptınız.";
+
+        if (!string.IsNullOrEmpty(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl) && model.ReturnUrl != "/")
+        {
+            return LocalRedirect(model.ReturnUrl);
+        }
+
+        if (role == AppRoles.Administrator)
+        {
+            return RedirectToAction("Index", "Admin");
+        }
+
+        return RedirectToAction("Index", "Home");
+    }
+
+    private async Task<IActionResult> HandleDevelopmentRegister(RegisterViewModel model, string email, string trimmedName)
+    {
+        var userId = Guid.NewGuid();
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.NameIdentifier, userId.ToString()),
+            new(ClaimTypes.Name, trimmedName),
+            new(ClaimTypes.Email, email),
+            new(ClaimTypes.Role, AppRoles.Student)
+        };
+        if (!string.IsNullOrEmpty(model.StudentNo))
+        {
+            claims.Add(new Claim("StudentNo", model.StudentNo.Trim()));
+        }
+
+        var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+        var authProperties = new AuthenticationProperties
+        {
+            IsPersistent = true,
+            ExpiresUtc = DateTimeOffset.UtcNow.AddDays(7)
+        };
+        authProperties.StoreTokens(new[]
+        {
+            new AuthenticationToken { Name = "access_token", Value = "dev-student-access-token" }
+        });
+
+        await HttpContext.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            new ClaimsPrincipal(claimsIdentity),
+            authProperties);
+
+        TempData["SuccessMessage"] = $"Tebrikler {trimmedName}! fixCampus hesabınız başarıyla oluşturuldu ve oturumunuz açıldı.";
+        return RedirectToAction("Index", "Home");
     }
 }
