@@ -96,6 +96,12 @@ public class AccountController : Controller
                 studentNo = prefix;
             }
         }
+        else if (string.Equals(model.UserType, "admin", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(input, "admin", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(input, "yonetici", StringComparison.OrdinalIgnoreCase))
+        {
+            email = _configuration["AdminSettings:Email"] ?? "admin@ankara.edu.tr";
+        }
         else
         {
             ModelState.AddModelError(string.Empty, "Lütfen geçerli bir üniversite e-posta adresi veya 8 haneli öğrenci numaranızı giriniz.");
