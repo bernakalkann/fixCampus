@@ -17,7 +17,17 @@ public sealed class CategoriesController(FixCampusDbContext db) : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
-    public async Task<IActionResult> List(CancellationToken ct) => Ok(await db.Kategoriler.AsNoTracking()
-        .OrderBy(x => x.Tur).ThenBy(x => x.Ad)
-        .Select(x => new CategoryResponse(x.Id, x.Ad, x.Tur)).ToListAsync(ct));
+    public async Task<IActionResult> List([FromQuery] string? tur = null, CancellationToken ct = default)
+    {
+        var query = db.Kategoriler.AsNoTracking();
+        if (!string.IsNullOrWhiteSpace(tur))
+        {
+            var normalizedTur = tur.Trim();
+            query = query.Where(x => x.Tur == normalizedTur);
+        }
+
+        return Ok(await query
+            .OrderBy(x => x.Tur).ThenBy(x => x.Ad)
+            .Select(x => new CategoryResponse(x.Id, x.Ad, x.Tur)).ToListAsync(ct));
+    }
 }

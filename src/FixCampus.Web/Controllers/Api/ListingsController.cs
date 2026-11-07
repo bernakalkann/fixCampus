@@ -17,12 +17,78 @@ namespace FixCampus.Web.Controllers.Api;
 public sealed class ListingsController(FixCampusDbContext db) : ControllerBase
 {
     [HttpGet]
-    [EndpointSummary("Gizli olmayan ilanları en yeniden başlayarak listeler.")]
+    [EndpointSummary("Gizli olmayan ilanları filtreli ve sayfalı olarak listeler.")]
     [ProducesResponseType<List<ListingResponse>>(StatusCodes.Status200OK)]
-    public async Task<IActionResult> List(CancellationToken ct)
+    public async Task<IActionResult> List(
+        [FromQuery] string? tur = null,
+        [FromQuery] Guid? kategoriId = null,
+        [FromQuery] string? q = null,
+        [FromQuery] int? sayfa = null,
+        [FromQuery] int? sayfaBoyutu = null,
+        CancellationToken ct = default)
     {
-        return Ok(await Project(db.Ilanlar.AsNoTracking().Where(x => x.Durum != "Gizli")
-            .OrderByDescending(x => x.OlusturulmaTarihi).ThenBy(x => x.Id)).ToListAsync(ct));
+        var query = db.Ilanlar.AsNoTracking().Where(x => x.Durum != "Gizli");
+
+        if (!string.IsNullOrWhiteSpace(tur))
+        {
+            var normalizedTur = tur.Trim();
+            query = query.Where(x => x.Tur == normalizedTur);
+        }
+
+        if (kategoriId.HasValue && kategoriId.Value != Guid.Empty)
+        {
+            query = query.Where(x => x.KategoriId == kategoriId.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(q))
+        {
+            var search = q.Trim();
+            if (db.Database.IsNpgsql())
+            {
+                var pattern = $"%{EscapeLikePattern(search)}%";
+                query = query.Where(x =>
+                    EF.Functions.ILike(x.Baslik, pattern, "\\") ||
+                    EF.Functions.ILike(x.Aciklama, pattern, "\\") ||
+                    EF.Functions.ILike(x.Yer, pattern, "\\"));
+            }
+            else
+            {
+                var lower = search.ToLowerInvariant();
+                query = query.Where(x =>
+                    x.Baslik.ToLower().Contains(lower) ||
+                    x.Aciklama.ToLower().Contains(lower) ||
+                    x.Yer.ToLower().Contains(lower));
+            }
+        }
+
+        var ordered = query.OrderByDescending(x => x.OlusturulmaTarihi).ThenBy(x => x.Id);
+
+        if (sayfa.HasValue && sayfaBoyutu.HasValue)
+        {
+            var page = Math.Max(1, sayfa.Value);
+            var pageSize = Math.Clamp(sayfaBoyutu.Value, 1, 50);
+            return Ok(await Project(ordered.Skip((page - 1) * pageSize).Take(pageSize)).ToListAsync(ct));
+        }
+
+        return Ok(await Project(ordered).ToListAsync(ct));
+    }
+
+    [HttpGet("benim")]
+    [EndpointSummary("Giriş yapan kullanıcının kendi aktif ilanlarını listeler.")]
+    [ProducesResponseType<List<ListingResponse>>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> MyListings([FromQuery] string? tur = null, CancellationToken ct = default)
+    {
+        if (!TryUserId(out var userId)) return Unauthorized();
+        var query = db.Ilanlar.AsNoTracking()
+            .Where(x => x.SahipId == userId && x.Durum != "Gizli");
+
+        if (!string.IsNullOrWhiteSpace(tur))
+        {
+            var normalizedTur = tur.Trim();
+            query = query.Where(x => x.Tur == normalizedTur);
+        }
+
+        return Ok(await Project(query.OrderByDescending(x => x.OlusturulmaTarihi).ThenBy(x => x.Id)).ToListAsync(ct));
     }
 
     [HttpGet("{id:guid}")]
@@ -127,6 +193,12 @@ public sealed class ListingsController(FixCampusDbContext db) : ControllerBase
 
     private static ListingResponse ToResponse(Ilan x) => new(x.Id, x.SahipId, x.KategoriId, x.Kategori.Ad,
         x.Baslik, x.Aciklama, x.Tur, x.Yer, x.BulusmaTarihi, x.Durum, x.OlusturulmaTarihi);
+
+    private static string EscapeLikePattern(string value) =>
+        value
+            .Replace("\\", "\\\\", StringComparison.Ordinal)
+            .Replace("%", "\\%", StringComparison.Ordinal)
+            .Replace("_", "\\_", StringComparison.Ordinal);
 
     private static IQueryable<ListingResponse> Project(IQueryable<Ilan> query) => query.Select(x =>
         new ListingResponse(x.Id, x.SahipId, x.KategoriId, x.Kategori.Ad, x.Baslik, x.Aciklama,

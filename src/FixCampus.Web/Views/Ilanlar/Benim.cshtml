@@ -1,10 +1,16 @@
-@model IReadOnlyList<FixCampus.Web.Contracts.ListingSummaryResponse>
+@model FixCampus.Web.Models.MyListingsViewModel
+@{
+    ViewData["Title"] = "İlanlarım";
+}
 
 <div class="container py-4">
+    <!-- Sayfa Başlığı ve Yeni İlan Butonu -->
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
         <div>
-            <h2 class="fw-bold text-dark mb-1">İlanlarım</h2>
-            <p class="text-muted small mb-0">Oluşturduğunuz tüm sosyal buluşmalar ve kayıp/buluntu ilanlarının yönetimi.</p>
+            <h2 class="fw-bold text-dark mb-1">
+                <i class="bi bi-collection text-primary me-2"></i>İlanlarım
+            </h2>
+            <p class="text-muted small mb-0">Oluşturduğunuz tüm sosyal buluşmalar ve kayıp/buluntu duyurularının yönetimi.</p>
         </div>
         <div>
             <a asp-action="Yeni" class="btn btn-dark btn-sm px-3 rounded-pill shadow-sm">
@@ -13,17 +19,92 @@
         </div>
     </div>
 
-    @if (!Model.Any())
+    <!-- İstatistik Rozetleri / Özet Kartları -->
+    <div class="row g-3 mb-4">
+        <div class="col-sm-4">
+            <div class="card border rounded-4 p-3 bg-white shadow-sm h-100">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-semibold text-uppercase">Toplam İlanım</div>
+                        <div class="fs-3 fw-bold text-dark">@Model.TotalCount</div>
+                    </div>
+                    <div class="p-3 bg-light rounded-circle text-primary">
+                        <i class="bi bi-folder2-open fs-4"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-4">
+            <div class="card border rounded-4 p-3 bg-white shadow-sm h-100">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-semibold text-uppercase">Sosyal Radar</div>
+                        <div class="fs-3 fw-bold text-primary">@Model.SocialCount</div>
+                    </div>
+                    <div class="p-3 bg-primary-subtle rounded-circle text-primary">
+                        <i class="bi bi-people-fill fs-4"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-4">
+            <div class="card border rounded-4 p-3 bg-white shadow-sm h-100">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-semibold text-uppercase">Kayıp & Buluntu</div>
+                        <div class="fs-3 fw-bold text-danger">@Model.LostFoundCount</div>
+                    </div>
+                    <div class="p-3 bg-danger-subtle rounded-circle text-danger">
+                        <i class="bi bi-box-seam fs-4"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tür Filtreleme Sekmeleri (Tabs) -->
+    <div class="d-flex flex-wrap gap-2 mb-3">
+        <a asp-action="Benim" class="btn btn-sm rounded-pill @(string.IsNullOrEmpty(Model.SelectedTur) ? "btn-dark" : "btn-outline-secondary")">
+            Tümü <span class="badge bg-light text-dark ms-1">@Model.TotalCount</span>
+        </a>
+        <a asp-action="Benim" asp-route-tur="Sosyal" class="btn btn-sm rounded-pill @(Model.SelectedTur == "Sosyal" ? "btn-primary" : "btn-outline-secondary")">
+            <i class="bi bi-people me-1"></i> Sosyal Radar <span class="badge bg-light text-dark ms-1">@Model.SocialCount</span>
+        </a>
+        <a asp-action="Benim" asp-route-tur="Kayip" class="btn btn-sm rounded-pill @(Model.SelectedTur == "Kayip" ? "btn-danger" : "btn-outline-secondary")">
+            <i class="bi bi-exclamation-circle me-1"></i> Kayıp Eşyalar
+        </a>
+        <a asp-action="Benim" asp-route-tur="Buluntu" class="btn btn-sm rounded-pill @(Model.SelectedTur == "Buluntu" ? "btn-success" : "btn-outline-secondary")">
+            <i class="bi bi-check-circle me-1"></i> Buluntu Eşyalar
+        </a>
+    </div>
+
+    @if (!Model.Listings.Any())
     {
         <div class="card border rounded-4 p-5 text-center bg-white shadow-sm my-4">
             <div class="text-muted mb-3"><i class="bi bi-collection fs-1"></i></div>
-            <h5 class="fw-bold text-dark">Henüz Bir İlanınız Yok</h5>
-            <p class="text-muted small mb-3">Kampüsteki arkadaşlarınızla buluşmak veya eşyalarınızı bulmak için ilk ilanınızı hemen oluşturun.</p>
-            <div>
-                <a asp-action="Yeni" class="btn btn-dark btn-sm px-4 rounded-pill">
-                    <i class="bi bi-plus-circle me-1"></i> Yeni İlan Oluştur
-                </a>
-            </div>
+            @if (!string.IsNullOrEmpty(Model.SelectedTur))
+            {
+                <h5 class="fw-bold text-dark">Bu Türde İlanınız Bulunmuyor</h5>
+                <p class="text-muted small mb-3">Seçtiğiniz filtreye uygun ilanınız bulunmamaktadır.</p>
+                <div>
+                    <a asp-action="Benim" class="btn btn-outline-secondary btn-sm px-4 rounded-pill me-2">
+                        Tüm İlanlarımı Göster
+                    </a>
+                    <a asp-action="Yeni" asp-route-tur="@Model.SelectedTur" class="btn btn-dark btn-sm px-4 rounded-pill">
+                        <i class="bi bi-plus-circle me-1"></i> İlan Oluştur
+                    </a>
+                </div>
+            }
+            else
+            {
+                <h5 class="fw-bold text-dark">Henüz Bir İlanınız Yok</h5>
+                <p class="text-muted small mb-3">Kampüsteki arkadaşlarınızla buluşmak veya eşyalarınızı bulmak için ilk ilanınızı hemen oluşturun.</p>
+                <div>
+                    <a asp-action="Yeni" class="btn btn-dark btn-sm px-4 rounded-pill">
+                        <i class="bi bi-plus-circle me-1"></i> Yeni İlan Oluştur
+                    </a>
+                </div>
+            }
         </div>
     }
     else
@@ -33,16 +114,16 @@
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
                         <tr>
-                            <th>Tür</th>
-                            <th>İlan Başlığı</th>
+                            <th style="width: 110px;">Tür</th>
+                            <th>İlan Başlığı & Detay</th>
                             <th>Kategori & Konum</th>
-                            <th>Tarih</th>
-                            <th>Durum</th>
-                            <th class="text-end pe-4" style="min-width: 170px;">İşlemler</th>
+                            <th style="width: 160px;">Tarih</th>
+                            <th style="width: 100px;">Durum</th>
+                            <th class="text-end pe-4" style="min-width: 160px;">İşlemler</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var item in Model)
+                        @foreach (var item in Model.Listings)
                         {
                             <tr>
                                 <td>
@@ -52,27 +133,34 @@
                                         "Buluntu" => "bg-success-subtle text-success border border-success-subtle",
                                         _ => "bg-light text-dark border"
                                     }) px-2 py-1 rounded-pill small">
-                                        @item.Tur
+                                        @(item.Tur switch {
+                                            "Sosyal" => "Sosyal",
+                                            "Kayip" => "Kayıp",
+                                            "Buluntu" => "Buluntu",
+                                            _ => item.Tur
+                                        })
                                     </span>
                                 </td>
                                 <td>
-                                    <div class="fw-bold text-dark text-truncate" style="max-width: 250px;">@item.Baslik</div>
-                                    <div class="text-muted small text-truncate" style="max-width: 250px;">@item.Aciklama</div>
+                                    <a asp-action="Detay" asp-route-id="@item.Id" class="fw-bold text-dark text-decoration-none d-block text-truncate" style="max-width: 280px;">
+                                        @item.Baslik
+                                    </a>
+                                    <div class="text-muted small text-truncate" style="max-width: 280px;">@item.Aciklama</div>
                                 </td>
                                 <td>
-                                    <div class="small fw-medium text-dark">@item.KategoriAd</div>
+                                    <div class="small fw-medium text-dark"><i class="bi bi-tag me-1 text-secondary"></i>@item.KategoriAd</div>
                                     <div class="text-muted small"><i class="bi bi-geo-alt me-1 text-danger"></i>@item.Yer</div>
                                 </td>
                                 <td>
                                     @if (item.Tur == "Sosyal" && item.BulusmaTarihi.HasValue)
                                     {
-                                        <div class="small fw-semibold text-primary">@item.BulusmaTarihi.Value.ToString("dd.MM.yyyy HH:mm")</div>
-                                        <div class="text-muted small">Buluşma Zamanı</div>
+                                        <div class="small fw-semibold text-primary"><i class="bi bi-clock me-1"></i>@item.BulusmaTarihi.Value.ToString("dd.MM.yyyy HH:mm")</div>
+                                        <div class="text-muted small" style="font-size: 0.75rem;">Buluşma Zamanı</div>
                                     }
                                     else
                                     {
                                         <div class="small text-dark">@item.OlusturulmaTarihi.ToString("dd.MM.yyyy")</div>
-                                        <div class="text-muted small">Yayın Tarihi</div>
+                                        <div class="text-muted small" style="font-size: 0.75rem;">Yayın Tarihi</div>
                                     }
                                 </td>
                                 <td>
@@ -86,7 +174,7 @@
                                 </td>
                                 <td class="text-end pe-4">
                                     <div class="btn-group btn-group-sm">
-                                        <a asp-action="Detay" asp-route-id="@item.Id" class="btn btn-outline-dark" title="Görüntüle">
+                                        <a asp-action="Detay" asp-route-id="@item.Id" class="btn btn-outline-dark" title="Detay İncele">
                                             <i class="bi bi-eye"></i>
                                         </a>
                                         <a asp-action="Duzenle" asp-route-id="@item.Id" class="btn btn-outline-secondary" title="Düzenle">
@@ -97,16 +185,19 @@
                                         </button>
                                     </div>
 
-                                    <!-- Silme Modalı -->
+                                    <!-- Silme Onay Modalı -->
                                     <div class="modal fade" id="delModal-@item.Id" tabindex="-1" aria-hidden="true">
                                         <div class="modal-dialog modal-dialog-centered text-start">
                                             <div class="modal-content border-0 rounded-4 shadow">
                                                 <div class="modal-header border-bottom">
-                                                    <h5 class="modal-title fw-bold text-dark">İlanı Sil</h5>
+                                                    <h5 class="modal-title fw-bold text-dark">
+                                                        <i class="bi bi-exclamation-triangle-fill text-danger me-2"></i>İlanı Sil
+                                                    </h5>
                                                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
                                                 </div>
                                                 <div class="modal-body">
-                                                    <strong>"@item.Baslik"</strong> başlıklı ilanı silmek istediğinize emin misiniz?
+                                                    <p class="mb-2"><strong>"@item.Baslik"</strong> başlıklı ilanı silmek istediğinize emin misiniz?</p>
+                                                    <p class="text-muted small mb-0">Bu işlem geri alınamaz. İlana bağlı tüm veriler kalıcı olarak silinecektir.</p>
                                                 </div>
                                                 <div class="modal-footer border-top">
                                                     <button type="button" class="btn btn-sm btn-secondary rounded-pill px-3" data-bs-dismiss="modal">Vazgeç</button>
@@ -127,4 +218,3 @@
         </div>
     }
 </div>
-

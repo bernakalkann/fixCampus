@@ -173,3 +173,34 @@ Platformun temel işlevi olan kampüs ilanlarının (Sosyal Radar buluşmaları 
 dotnet run --project tests/FixCampus.ListingChecks
 ```
 
+---
+
+## 🚀 Hafta 4 — Kategori, Metin Arama, Sayfalama ve İlanlarım
+
+fixCampus platformunda ilan keşif deneyimi ve kişisel ilan yönetimi tamamlanmıştır. Kullanıcıların kampüs içindeki sosyal buluşmaları ve kayıp/buluntu duyurularını kategori, ilan türü ve serbest metin arama yoluyla saniyeler içinde bulabilmesi sağlanmış; sayfalama yapısı optimize edilmiştir. Ayrıca öğrencilerin kendi oluşturdukları ilanları tek ekrandan istatistikleri ve durumlarıyla takip edebileceği, filtreleyip yönetebileceği "İlanlarım" paneli devreye alınmıştır.
+
+### Eklenen Yetenekler & Görev Dağılımı
+
+1. **Arama & Filtreleme Ekranı (Berke Mahmut Acar):**
+   - `Views/Ilanlar/Index.cshtml`: Modern arama formu, hızlı tür seçimi butonları (Sosyal Radar, Kayıp Eşya, Buluntu Eşya, Tüm İlanlar), aktif filtre rozetleri ve filtreleri tek tıkla sıfırlama.
+   - Sayfalama (Pagination): Arama ve filtre sorgu parametrelerini (`tur`, `kategoriId`, `q`) koruyan sayfalar arası akıcı gezinme.
+   - Mobil uyumlu, responsive ve hover efektli ilan kartları.
+
+2. **Sorgular & API İyileştirmeleri (Berna Kalkan):**
+   - `GET /api/ilanlar`: `tur`, `kategoriId`, `q` (büyük/küçük harf duyarsız başlık, açıklama ve yer araması), `sayfa` ve `sayfaBoyutu` filtreleme ve sayfalama parametreleri.
+   - `GET /api/ilanlar/benim`: Giriş yapmış kullanıcının kendi aktif ilanlarını listeleme ucu (`tur` filtreleme destekli).
+   - `GET /api/kategoriler`: Türe göre kategori filtreleme desteği.
+
+3. **Kişisel Yönetim Paneli — İlanlarım (Zülfikar Durak):**
+   - `Views/Ilanlar/Benim.cshtml` ve `IlanlarController.Benim`: Toplam ilan, Sosyal Radar ve Kayıp & Buluntu özet sayaçları.
+   - Tür sekmeleri (Tümü, Sosyal, Kayıp, Buluntu), durum rozetleri (`Aktif`, `Cozuldu`), detay inceleme, düzenleme ve modal onaylı silme kontrolleri.
+
+4. **Çift Hesap Simülasyonu & İlk Gösterim (Demo):**
+   - İki farklı öğrenci hesabı üzerinden ilan oluşturma, arama, filtreleme, detay inceleme, sahiplik sınırları (403 Forbidden) ve kişisel ilan listesi izolasyonu uçtan uca doğrulanmıştır.
+
+### Hafta 4 Testlerini Çalıştırma
+
+```powershell
+dotnet run --project tests/FixCampus.ListingChecks
+```
+

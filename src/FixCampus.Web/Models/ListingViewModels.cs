@@ -13,6 +13,15 @@ public sealed class ListingListViewModel
     public string? SearchQuery { get; init; }
 }
 
+public sealed class MyListingsViewModel
+{
+    public IReadOnlyList<ListingSummaryResponse> Listings { get; init; } = [];
+    public string? SelectedTur { get; init; }
+    public int TotalCount { get; init; }
+    public int SocialCount { get; init; }
+    public int LostFoundCount { get; init; }
+}
+
 public class ListingFormViewModel : IValidatableObject
 {
     private static readonly HashSet<string> AllowedTypes = new(StringComparer.Ordinal)

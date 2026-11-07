@@ -74,7 +74,7 @@ public sealed class IlanlarController(
 
     // GET: /Ilanlar/Benim
     [HttpGet]
-    public async Task<IActionResult> Benim(CancellationToken ct = default)
+    public async Task<IActionResult> Benim([FromQuery] string? tur = null, CancellationToken ct = default)
     {
         var userId = GetCurrentUserId();
         if (!userId.HasValue)
@@ -84,14 +84,28 @@ public sealed class IlanlarController(
 
         try
         {
-            var myListings = await listingService.GetUserListingsAsync(userId.Value, ct);
-            return View(myListings);
+            var allUserListings = await listingService.GetUserListingsAsync(userId.Value, null, ct);
+            var normalizedTur = string.IsNullOrWhiteSpace(tur) ? null : tur.Trim();
+            var filtered = normalizedTur is null
+                ? allUserListings
+                : allUserListings.Where(x => string.Equals(x.Tur, normalizedTur, StringComparison.OrdinalIgnoreCase)).ToList();
+
+            var vm = new MyListingsViewModel
+            {
+                Listings = filtered,
+                SelectedTur = normalizedTur,
+                TotalCount = allUserListings.Count,
+                SocialCount = allUserListings.Count(x => x.Tur == "Sosyal"),
+                LostFoundCount = allUserListings.Count(x => x.Tur is "Kayip" or "Buluntu")
+            };
+
+            return View(vm);
         }
         catch (Exception ex) when (ex is DbException or DbUpdateException or TimeoutException or InvalidOperationException)
         {
             logger.LogError(ex, "Kullanıcı ilanları yüklenirken veritabanı hatası oluştu.");
             TempData["ErrorMessage"] = "İlanlarınız yüklenirken veritabanı bağlantısı kurulamadı.";
-            return View(Array.Empty<ListingSummaryResponse>());
+            return View(new MyListingsViewModel());
         }
     }
 

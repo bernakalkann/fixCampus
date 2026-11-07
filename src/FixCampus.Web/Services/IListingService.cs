@@ -18,7 +18,7 @@ public interface IListingService
 {
     Task<PagedListingsResponse> GetListingsAsync(string? tur, Guid? kategoriId, string? arama, int sayfa, int sayfaBoyutu, CancellationToken ct = default);
     Task<ListingDetailResponse?> GetListingByIdAsync(Guid id, Guid? currentUserId, bool isAdmin, CancellationToken ct = default);
-    Task<IReadOnlyList<ListingSummaryResponse>> GetUserListingsAsync(Guid userId, CancellationToken ct = default);
+    Task<IReadOnlyList<ListingSummaryResponse>> GetUserListingsAsync(Guid userId, string? tur = null, CancellationToken ct = default);
     Task<IReadOnlyList<CategoryDto>> GetCategoriesAsync(string? tur = null, CancellationToken ct = default);
     Task<ListingOperationResult> CreateListingAsync(CreateListingRequest request, Guid userId, string userDisplayName, string userEmail, CancellationToken ct = default);
     Task<ListingOperationResult> UpdateListingAsync(Guid id, UpdateListingRequest request, Guid currentUserId, bool isAdmin, CancellationToken ct = default);
@@ -173,15 +173,23 @@ public sealed class ListingService(
         );
     }
 
-    public async Task<IReadOnlyList<ListingSummaryResponse>> GetUserListingsAsync(Guid userId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<ListingSummaryResponse>> GetUserListingsAsync(Guid userId, string? tur = null, CancellationToken ct = default)
     {
-        return await db.Ilanlar
+        var query = db.Ilanlar
             .AsNoTracking()
             .Include(i => i.Sahip)
             .Include(i => i.Kategori)
             .Include(i => i.Katilimlar)
             .Include(i => i.Fotograflar)
-            .Where(i => i.SahipId == userId && i.Durum != "Gizli")
+            .Where(i => i.SahipId == userId && i.Durum != "Gizli");
+
+        if (!string.IsNullOrWhiteSpace(tur))
+        {
+            var normalizedTur = tur.Trim();
+            query = query.Where(i => i.Tur == normalizedTur);
+        }
+
+        return await query
             .OrderByDescending(i => i.OlusturulmaTarihi)
             .ThenByDescending(i => i.Id)
             .Select(i => new ListingSummaryResponse(

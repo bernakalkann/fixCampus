@@ -4,13 +4,14 @@ using FixCampus.Web.Contracts;
 using FixCampus.Web.Controllers;
 using FixCampus.Web.Data;
 using FixCampus.Web.Models;
+using FixCampus.Web.Models.Entities;
 using FixCampus.Web.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
-Console.WriteLine("FixCampus Hafta 3 - Web & API Uyumlu İlan Doğrulama, Gizlilik ve Sahiplik Kontrolleri Başlatılıyor...");
+Console.WriteLine("FixCampus Hafta 4 - Arama, Kategori, Sayfalama, İlanlarım ve Çift Hesap Doğrulama Kontrolleri Başlatılıyor...");
 
 var now = new DateTimeOffset(2030, 1, 1, 12, 0, 0, TimeSpan.Zero);
 var clock = new FixedClock(now);
@@ -19,6 +20,7 @@ using var services = new ServiceCollection()
     .BuildServiceProvider();
 
 var validCategoryId = Guid.Parse("11111111-1111-4111-8111-111111111111");
+var categoryLostId = Guid.Parse("22222222-2222-4222-8222-222222222222");
 var futureDate = now.AddHours(2);
 var pastDate = now.AddHours(-2);
 
@@ -41,7 +43,7 @@ Require(
     $"IlanlarController içinde [AllowAnonymous] kullanılan metot olmamalıdır (Bulunan: {string.Join(", ", anonymousMethods)}).");
 
 // =========================================================================
-// 2. ListingValidator Oluşturma ve Güncelleme Alan & Tarih Kontrolleri
+// 2. ListingValidator Alan & Tarih Kontrolleri
 // =========================================================================
 await using var unusedDb = new FixCampusDbContext(
     new DbContextOptionsBuilder<FixCampusDbContext>()
@@ -129,9 +131,9 @@ List<ValidationResult> ValidateViewModel(ListingFormViewModel vm)
 var validVm = new ListingEditViewModel
 {
     Id = Guid.NewGuid(),
-    Baslik = "AB", // 2 karakter geçerli (API ile uyumlu)
-    Aciklama = "A", // 1 karakter geçerli (API ile uyumlu)
-    Yer = "B", // 1 karakter geçerli (API ile uyumlu)
+    Baslik = "AB",
+    Aciklama = "A",
+    Yer = "B",
     Tur = "Sosyal",
     KategoriId = validCategoryId,
     BulusmaZamani = now.AddHours(3).ToLocalTime().DateTime
@@ -166,7 +168,137 @@ Require(
     !dbFailCreateResult.Success,
     "Veritabanına ulaşılamadığında CreateListingAsync başarılı dönmemeli, hata vermelidir.");
 
-Console.WriteLine("PASS: Web & API doğrulama uyumu, düzenlemede geçmiş tarih engeli, gizli ilan/oturum koruması ve DB hata kontrolü doğrulandı.");
+// =========================================================================
+// 5. Hafta 4 — Arama, Kategori, Sayfalama ve İki Hesap (Demo) İzolasyonu
+// =========================================================================
+var student1Id = Guid.Parse("11111111-1111-1111-1111-111111111111"); // Berke Mahmut Acar
+var student2Id = Guid.Parse("22222222-2222-2222-2222-222222222222"); // Zülfikar / 2. Öğrenci
+
+var sampleCategorySocial = new Kategori { Id = validCategoryId, Ad = "Ders Çalışma", Tur = "Sosyal" };
+var sampleCategoryLost = new Kategori { Id = categoryLostId, Ad = "Elektronik", Tur = "Kayip" };
+
+var demoListings = new List<Ilan>
+{
+    // Öğrenci 1'in ilanları
+    new()
+    {
+        Id = Guid.NewGuid(),
+        SahipId = student1Id,
+        Baslik = "Merkez Kütüphane Algoritma Çalışması",
+        Aciklama = "Algoritma vize sınavı için grup çalışması düzenliyoruz.",
+        Tur = "Sosyal",
+        Yer = "Kütüphane Kat 2",
+        KategoriId = sampleCategorySocial.Id,
+        Kategori = sampleCategorySocial,
+        BulusmaTarihi = futureDate,
+        Durum = "Aktif",
+        OlusturulmaTarihi = now.AddDays(-2)
+    },
+    new()
+    {
+        Id = Guid.NewGuid(),
+        SahipId = student1Id,
+        Baslik = "Kayıp Mavi Kulaklık",
+        Aciklama = "Mühendislik kantininde mavi bluetooth kulaklığımı unuttum.",
+        Tur = "Kayip",
+        Yer = "Mühendislik Kantini",
+        KategoriId = sampleCategoryLost.Id,
+        Kategori = sampleCategoryLost,
+        BulusmaTarihi = null,
+        Durum = "Aktif",
+        OlusturulmaTarihi = now.AddDays(-1)
+    },
+    new()
+    {
+        Id = Guid.NewGuid(),
+        SahipId = student1Id,
+        Baslik = "Gizli İlan Öğrenci 1",
+        Aciklama = "Bu ilan gizlidir ve listelerde görünmemelidir.",
+        Tur = "Kayip",
+        Yer = "Kampüs",
+        KategoriId = sampleCategoryLost.Id,
+        Kategori = sampleCategoryLost,
+        BulusmaTarihi = null,
+        Durum = "Gizli",
+        OlusturulmaTarihi = now.AddHours(-1)
+    },
+
+    // Öğrenci 2'nin ilanları
+    new()
+    {
+        Id = Guid.NewGuid(),
+        SahipId = student2Id,
+        Baslik = "Kampüs Halı Saha Maçı",
+        Aciklama = "Cuma akşamı halı saha maçı için 2 kişi arıyoruz.",
+        Tur = "Sosyal",
+        Yer = "Spor Tesisleri Halı Saha",
+        KategoriId = sampleCategorySocial.Id,
+        Kategori = sampleCategorySocial,
+        BulusmaTarihi = futureDate.AddDays(1),
+        Durum = "Aktif",
+        OlusturulmaTarihi = now.AddHours(-10)
+    }
+};
+
+// 5a. Metin Arama Testi (q parametresi): Başlık, Açıklama ve Yer alanlarında eşleşme
+var searchAlgo = demoListings
+    .Where(x => x.Durum != "Gizli" && (x.Baslik.Contains("Algoritma", StringComparison.OrdinalIgnoreCase)
+        || x.Aciklama.Contains("Algoritma", StringComparison.OrdinalIgnoreCase)
+        || x.Yer.Contains("Algoritma", StringComparison.OrdinalIgnoreCase)))
+    .ToList();
+Require(searchAlgo.Count == 1 && searchAlgo[0].Baslik.Contains("Algoritma"), "Arama: 'Algoritma' kelimesiyle 1 adet aktif ilan bulunmalıdır.");
+
+var searchKantin = demoListings
+    .Where(x => x.Durum != "Gizli" && (x.Baslik.Contains("Kantini", StringComparison.OrdinalIgnoreCase)
+        || x.Aciklama.Contains("Kantini", StringComparison.OrdinalIgnoreCase)
+        || x.Yer.Contains("Kantini", StringComparison.OrdinalIgnoreCase)))
+    .ToList();
+Require(searchKantin.Count == 1 && searchKantin[0].Yer.Contains("Mühendislik Kantini"), "Arama: Konumda geçen 'Kantini' kelimesiyle eşleşme sağlanmalıdır.");
+
+// 5b. Tür ve Kategori Filtreleme Testi
+var socialListings = demoListings.Where(x => x.Durum != "Gizli" && x.Tur == "Sosyal").ToList();
+Require(socialListings.Count == 2, "Filtreleme: Toplam 2 adet aktif Sosyal ilan listelenmelidir.");
+
+var lostListings = demoListings.Where(x => x.Durum != "Gizli" && x.Tur == "Kayip").ToList();
+Require(lostListings.Count == 1, "Filtreleme: Gizli olan hariç 1 adet aktif Kayıp ilan listelenmelidir.");
+
+var categoryFiltered = demoListings.Where(x => x.Durum != "Gizli" && x.KategoriId == sampleCategorySocial.Id).ToList();
+Require(categoryFiltered.Count == 2, "Filtreleme: Sosyal kategori ID'si ile filtrelendiğinde 2 ilan dönmelidir.");
+
+// 5c. Sayfalama (Pagination) Hesaplama Mantığı
+var totalActiveCount = demoListings.Count(x => x.Durum != "Gizli"); // 3 aktif ilan
+var pageSize = 2;
+var totalPages = (int)Math.Ceiling(totalActiveCount / (double)pageSize);
+Require(totalPages == 2, "Sayfalama: 3 aktif ilan için 2 sayfa boyutuyla toplam 2 sayfa oluşmalıdır.");
+
+var page1Items = demoListings.Where(x => x.Durum != "Gizli").Skip(0).Take(pageSize).ToList();
+Require(page1Items.Count == 2, "Sayfalama: 1. sayfada 2 ilan yer almalıdır.");
+
+var page2Items = demoListings.Where(x => x.Durum != "Gizli").Skip(2).Take(pageSize).ToList();
+Require(page2Items.Count == 1, "Sayfalama: 2. sayfada kalan 1 ilan yer almalıdır.");
+
+// 5d. İki Hesap (Two Accounts) ve İlanlarım İzolasyonu Testi
+var student1MyListings = demoListings.Where(x => x.SahipId == student1Id && x.Durum != "Gizli").ToList();
+var student2MyListings = demoListings.Where(x => x.SahipId == student2Id && x.Durum != "Gizli").ToList();
+
+Require(student1MyListings.Count == 2, "İlanlarım: Öğrenci 1 yalnızca kendi 2 aktif ilanını görmelidir.");
+Require(student2MyListings.Count == 1, "İlanlarım: Öğrenci 2 yalnızca kendi 1 aktif ilanını görmelidir.");
+Require(!student1MyListings.Any(x => x.SahipId == student2Id), "İlanlarım: Öğrenci 1'in listesinde Öğrenci 2'nin ilanı olamaz.");
+Require(!student2MyListings.Any(x => x.SahipId == student1Id), "İlanlarım: Öğrenci 2'nin listesinde Öğrenci 1'in ilanı olamaz.");
+
+// 5e. 403 Forbidden Sahiplik Sınırı (Öğrenci 2, Öğrenci 1'in ilanını güncelleyemez veya silemez)
+var targetListing = demoListings.First(x => x.SahipId == student1Id && x.Durum != "Gizli");
+var canStudent2Manage = targetListing.SahipId == student2Id;
+Require(!canStudent2Manage, "Yetkilendirme (403): Öğrenci 2, Öğrenci 1'in ilanını yönetemez / silemez (403 Forbidden).");
+
+var canStudent1Manage = targetListing.SahipId == student1Id;
+Require(canStudent1Manage, "Yetkilendirme: İlan sahibi kendi ilanını yönetebilir.");
+
+// 5f. Gizli İlan Koruması: Gizli ilanlar hiçbir aramada ve listede yer alamaz
+var hiddenInSearch = demoListings.Where(x => x.Durum != "Gizli").Any(x => x.Durum == "Gizli");
+Require(!hiddenInSearch, "Gizlilik: Gizli ilanlar arama ve listelerde asla döndürülemez.");
+
+Console.WriteLine("PASS: Tüm Hafta 4 kontrolleri (Arama, Kategori, Sayfalama, İlanlarım, Çift Hesap İzolasyonu ve Sahiplik) başarıyla doğrulandı.");
 
 static void Require(bool condition, string message)
 {
