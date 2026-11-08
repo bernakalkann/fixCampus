@@ -11,8 +11,33 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using FixCampus.Web.Models.Entities;
+using FixCampus.Web.Services;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using System.ComponentModel.DataAnnotations;
 
+if (args.Contains("--live-my-listings"))
+{
+    var configuration=new ConfigurationBuilder().AddUserSecrets(typeof(FixCampusDbContext).Assembly).Build();
+    var settings=new NpgsqlConnectionStringBuilder(configuration.GetConnectionString("Supabase"))
+        { Timeout=10,CommandTimeout=10,Pooling=false,IncludeErrorDetail=false };
+    if(settings.Host!="aws-0-ap-southeast-2.pooler.supabase.com"||settings.Database!="postgres")
+        throw new InvalidOperationException("Beklenmeyen hedef.");
+    using var timeout=new CancellationTokenSource(TimeSpan.FromSeconds(55));var ct=timeout.Token;
+    await using var liveDb=new FixCampusDbContext(new DbContextOptionsBuilder<FixCampusDbContext>().UseNpgsql(settings.ConnectionString).Options);
+    try
+    {
+        await liveDb.Database.OpenConnectionAsync(ct);
+        var profiles=await liveDb.Profiller.AsNoTracking().Where(x=>x.Rol=="Ogrenci").OrderBy(x=>x.Id).Select(x=>x.Id).Take(2).ToListAsync(ct);
+        Require(profiles.Count==2,"İki öğrenci profili gerekli.");
+        await using var tx=await liveDb.Database.BeginTransactionAsync(ct);
+        try { await MyListingsDatabaseChecks.RunAsync(liveDb,profiles[0],profiles[1],ct); }
+        finally { await tx.RollbackAsync(CancellationToken.None); }
+        Console.WriteLine("PASS: canlı Supabase işlemi geri alındı; kalıcı test kaydı yok. Doğrudan sorgu/servis testi, şifreyle oturum testi değildir.");
+    }
+    catch(Exception e) { Console.Error.WriteLine("FAIL live İlanlarım: "+e.GetType().Name+" / "+e.InnerException?.GetType().Name);Environment.ExitCode=1; }
+    return;
+}
 if (args.Contains("--live-read-only"))
 {
     var configuration = new ConfigurationBuilder().AddUserSecrets(typeof(FixCampusDbContext).Assembly)
@@ -197,10 +222,12 @@ Require(await db.Profiller.AsNoTracking().Where(x => x.Id == userId).Select(x =>
 Console.WriteLine("PASS: migration, snapshot, seed, ilişkiler, canlı okuma ve profil GET/PUT geriye uyumluluğu.");
 
 // Full CRUD and ownership checks use only the disposable fixcampus_test fixture above.
+using var mvcServices = new ServiceCollection().AddLogging().AddControllers().Services.BuildServiceProvider();
 ListingsController Listings(Guid owner) => new(db)
 {
     ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext
     {
+        RequestServices = mvcServices,
         User = new ClaimsPrincipal(new ClaimsIdentity(new[]
         { new Claim(ClaimTypes.NameIdentifier, owner.ToString()) }, "test"))
     } }
@@ -228,9 +255,10 @@ Require(await Listings(userId).Update(saved.Id, saveRequest, default) is OkObjec
 db.ChangeTracker.Clear();
 Require((await db.Ilanlar.AsNoTracking().SingleAsync(x => x.Id == saved.Id)).Baslik == "Düzenlenen ilan", "Güncelleme kalıcı değil.");
 saveRequest.KategoriId = Guid.NewGuid();
-Require(await Listings(userId).Create(saveRequest, default) is ObjectResult { StatusCode: 400 }, "Olmayan kategori kabul edildi.");
+var categoryResult = await Listings(userId).Create(saveRequest, default);
+Require(categoryResult is ObjectResult { Value: ValidationProblemDetails { Status: 400 } categoryErrors } && categoryErrors.Errors.ContainsKey("KategoriId"), "Olmayan kategori kabul edildi.");
 saveRequest.KategoriId = socialCategory.Id;
-Require(await Listings(userId).Update(saved.Id, saveRequest, default) is ObjectResult { StatusCode: 400 }, "Kategori/tür uyuşmazlığı kabul edildi.");
+Require(await Listings(userId).Update(saved.Id, saveRequest, default) is ObjectResult { Value: ValidationProblemDetails { Status: 400 } typeErrors } && typeErrors.Errors.ContainsKey("KategoriId"), "Kategori/tür uyuşmazlığı kabul edildi.");
 var missingId = Guid.NewGuid();
 Require(await Listings(userId).Get(missingId, default) is NotFoundObjectResult &&
     await Listings(userId).Update(missingId, saveRequest, default) is NotFoundObjectResult &&
@@ -242,6 +270,8 @@ var socialSaved = (ListingResponse)socialCreated.Value!;
 db.ChangeTracker.Clear();
 Require((await db.Ilanlar.SingleAsync(x => x.Id == socialSaved.Id)).BulusmaTarihi ==
     saveRequest.BulusmaTarihi.Value.ToUniversalTime(), "Tarih UTC olarak kaydedilmedi.");
+await MyListingsDatabaseChecks.RunAsync(db, userId, otherId, CancellationToken.None);
+
 db.Katilimlar.Add(new Katilim { IlanId = saved.Id, ProfilId = otherId });
 db.IlanFotograflari.Add(new IlanFotografi { IlanId = saved.Id, DosyaYolu = "test/photo.jpg" });
 db.Sikayetler.Add(new Sikayet { IlanId = saved.Id, BildirenId = otherId, Neden = "Test" });
