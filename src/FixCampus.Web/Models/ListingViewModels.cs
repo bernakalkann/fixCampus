@@ -15,6 +15,7 @@ public sealed class ListingListViewModel
 
 public sealed class MyListingsViewModel
 {
+    public string? ErrorMessage { get; init; }
     public IReadOnlyList<ListingSummaryResponse> Listings { get; init; } = [];
     public string? SelectedTur { get; init; }
     public int TotalCount { get; init; }

@@ -77,15 +77,19 @@ public sealed class IlanlarController(
     public async Task<IActionResult> Benim([FromQuery] string? tur = null, CancellationToken ct = default)
     {
         var userId = GetCurrentUserId();
-        if (!userId.HasValue)
+        if (!userId.HasValue || userId.Value == Guid.Empty)
         {
             return Challenge();
         }
 
+        var selectedType = string.IsNullOrWhiteSpace(tur) ? null : tur.Trim();
+        if (selectedType is not (null or "Sosyal" or "Kayip" or "Buluntu"))
+            return BadRequest("Geçersiz ilan türü.");
+
         try
         {
             var allUserListings = await listingService.GetUserListingsAsync(userId.Value, null, ct);
-            var normalizedTur = string.IsNullOrWhiteSpace(tur) ? null : tur.Trim();
+            var normalizedTur = selectedType;
             var filtered = normalizedTur is null
                 ? allUserListings
                 : allUserListings.Where(x => string.Equals(x.Tur, normalizedTur, StringComparison.OrdinalIgnoreCase)).ToList();
@@ -104,8 +108,12 @@ public sealed class IlanlarController(
         catch (Exception ex) when (ex is DbException or DbUpdateException or TimeoutException or InvalidOperationException)
         {
             logger.LogError(ex, "Kullanıcı ilanları yüklenirken veritabanı hatası oluştu.");
-            TempData["ErrorMessage"] = "İlanlarınız yüklenirken veritabanı bağlantısı kurulamadı.";
-            return View(new MyListingsViewModel());
+            Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+            return View(new MyListingsViewModel
+            {
+                SelectedTur = selectedType,
+                ErrorMessage = "İlanlarınız yüklenemedi. Bağlantınızı kontrol edip tekrar deneyin."
+            });
         }
     }
 
