@@ -1,0 +1,48 @@
+name: fixcampus_mobile
+description: "fixCampus - Üniversite Kampüs Sosyal Buluşma ve Kayıp-Buluntu Mobil Platformu"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.9.0 <4.0.0'
+  flutter: ">=3.35.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # State Management & Mimari
+  provider: ^6.1.2
+
+  # Ağ & API İletişimi
+  dio: ^5.7.0
+  http: ^1.2.0
+
+  # Supabase Kimlik Doğrulama & Depolama
+  supabase_flutter: ^2.18.3
+  supabase: ^2.16.5
+
+  # Fotoğraf ve Galeri Erişimi
+  image_picker: ^1.1.2
+
+  # Tarih/Saat & Yerelleştirme
+  intl: ^0.19.0
+
+  # Yerel Tercihler
+  shared_preferences: ^2.3.2
+
+dev_dependencies:
+  integration_test:
+    sdk: flutter
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/icons/
+
+
