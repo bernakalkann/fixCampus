@@ -1,0 +1,38 @@
+name: Web API ve PostgreSQL dogrulamasi
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: fixcampus_test
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: disposable-test-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1
+        with:
+          dotnet-version: '10.0.113'
+      - run: dotnet run --project tests/FixCampus.AuthChecks
+      - run: dotnet run --project tests/FixCampus.AuthorizationChecks
+      - run: dotnet run --project tests/FixCampus.ListingChecks
+      - run: dotnet run --project tests/FixCampus.DatabaseChecks -- --model-only
+      - run: dotnet run --project tests/FixCampus.DatabaseChecks
+        env:
+          FIXCAMPUS_TEST_DATABASE: Host=localhost;Port=5432;Database=fixcampus_test;Username=test;Password=disposable-test-password

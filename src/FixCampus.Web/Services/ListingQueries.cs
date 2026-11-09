@@ -7,9 +7,12 @@ namespace FixCampus.Web.Services;
 public static class ListingQueries
 {
     public static IQueryable<Ilan> Filter(IQueryable<Ilan> query, bool postgres,
-        string? tur, Guid? kategoriId, string? search)
+        string? tur, Guid? kategoriId, string? search,
+        bool lostFoundOnly = false, bool activeSocialOnly = false)
     {
         query = query.Where(x => x.Durum != "Gizli");
+        if (lostFoundOnly) query = query.Where(x => x.Tur == "Kayip" || x.Tur == "Buluntu");
+        if (activeSocialOnly) query = query.Where(x => x.Tur != "Sosyal" || x.Durum == "Aktif");
         if (!string.IsNullOrWhiteSpace(tur))
         {
             var type = tur.Trim();
@@ -17,22 +20,28 @@ public static class ListingQueries
         }
         if (kategoriId.HasValue && kategoriId.Value != Guid.Empty)
             query = query.Where(x => x.KategoriId == kategoriId.Value);
-        if (!string.IsNullOrWhiteSpace(search))
+        foreach (var token in (search ?? "").Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries))
         {
-            var text = search.Trim();
+            var text = token.Replace("İ", "i", StringComparison.Ordinal)
+                .Replace("I", "ı", StringComparison.Ordinal).ToLowerInvariant();
             if (postgres)
             {
                 var pattern = "%" + text.Replace("\\", "\\\\", StringComparison.Ordinal)
                     .Replace("%", "\\%", StringComparison.Ordinal)
                     .Replace("_", "\\_", StringComparison.Ordinal) + "%";
-                query = query.Where(x => EF.Functions.ILike(x.Baslik, pattern, "\\") ||
-                    EF.Functions.ILike(x.Aciklama, pattern, "\\") || EF.Functions.ILike(x.Yer, pattern, "\\"));
+                query = query.Where(x =>
+                    EF.Functions.ILike(x.Baslik.Replace("İ", "i").Replace("I", "ı").ToLower(), pattern, "\\") ||
+                    EF.Functions.ILike(x.Aciklama.Replace("İ", "i").Replace("I", "ı").ToLower(), pattern, "\\") ||
+                    EF.Functions.ILike(x.Yer.Replace("İ", "i").Replace("I", "ı").ToLower(), pattern, "\\") ||
+                    (x.Kategori != null && EF.Functions.ILike(x.Kategori.Ad.Replace("İ", "i").Replace("I", "ı").ToLower(), pattern, "\\")));
             }
             else
             {
-                var lower = text.ToLowerInvariant();
-                query = query.Where(x => x.Baslik.ToLower().Contains(lower) ||
-                    x.Aciklama.ToLower().Contains(lower) || x.Yer.ToLower().Contains(lower));
+                query = query.Where(x =>
+                    x.Baslik.Replace("İ", "i").Replace("I", "ı").ToLower().Contains(text) ||
+                    x.Aciklama.Replace("İ", "i").Replace("I", "ı").ToLower().Contains(text) ||
+                    x.Yer.Replace("İ", "i").Replace("I", "ı").ToLower().Contains(text) ||
+                    (x.Kategori != null && x.Kategori.Ad.Replace("İ", "i").Replace("I", "ı").ToLower().Contains(text)));
             }
         }
         return query;

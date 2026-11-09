@@ -47,3 +47,15 @@ SQL çevirisini doğrular; bu kontrol canlı Supabase sorgusu çalıştırmaz.
 
 Bu katkı veritabanı migration'ı veya Supabase yapılandırma değişikliği gerektirmez.
 İki hesapla canlı uçtan uca demo bu çalışma kapsamında yeniden yapılmamıştır.
+
+## Mobil ekran entegrasyonu
+
+Üç mobil ilan ekranı sayfalı API'yi kullanır. Sayfalı uçtaki isteğe bağlı
+`kayipBuluntu` ve `aktifSosyal` bayrakları mevcut akışları korur. Arama
+kelimeleri başlık/açıklama/yer/kategori adında birlikte aranır; Türkçe İ/i ve
+I/ı normalizasyonu uygulanır.
+
+`ListingSearchDatabaseChecks` gerçek PostgreSQL üzerinde yeni ucu, joker
+kaçışlarını, Türkçe/çok kelimeli aramayı, sayfalama toplamlarını ve MVC/mobil
+API'nin ortak kaydı okumasını denetler. GitHub Actions, yalnız geçici
+`fixcampus_test` veritabanında migration ve CRUD testlerini çalıştırır.

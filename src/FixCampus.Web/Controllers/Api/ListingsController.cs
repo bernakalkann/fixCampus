@@ -46,9 +46,11 @@ public sealed class ListingsController(FixCampusDbContext db) : ControllerBase
         [FromQuery] string? q = null,
         [FromQuery] int? sayfa = null,
         [FromQuery] int? sayfaBoyutu = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        [FromQuery] bool kayipBuluntu = false,
+        [FromQuery] bool aktifSosyal = false)
     {
-        var query = ListingQueries.Filter(db.Ilanlar.AsNoTracking(), db.Database.IsNpgsql(), tur, kategoriId, q);
+        var query = ListingQueries.Filter(db.Ilanlar.AsNoTracking(), db.Database.IsNpgsql(), tur, kategoriId, q, kayipBuluntu, aktifSosyal);
         var (page, pageSize) = ListingQueries.Normalize(sayfa, sayfaBoyutu);
         var total = await query.CountAsync(ct);
         var items = await Project(ListingQueries.Page(query, page, pageSize)).ToListAsync(ct);
