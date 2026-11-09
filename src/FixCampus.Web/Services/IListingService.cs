@@ -58,58 +58,13 @@ public sealed class ListingService(
         int sayfaBoyutu,
         CancellationToken ct = default)
     {
-        sayfa = Math.Max(1, sayfa);
-        sayfaBoyutu = sayfaBoyutu < 1 ? 12 : Math.Min(sayfaBoyutu, 50);
-
-        var query = db.Ilanlar
-            .AsNoTracking()
-            .Include(i => i.Sahip)
-            .Include(i => i.Kategori)
-            .Include(i => i.Katilimlar)
-            .Include(i => i.Fotograflar)
-            .Where(i => i.Durum != "Gizli")
-            .AsQueryable();
-
-        if (!string.IsNullOrWhiteSpace(tur))
-        {
-            var normalizedTur = tur.Trim();
-            query = query.Where(i => i.Tur == normalizedTur);
-        }
-
-        if (kategoriId.HasValue && kategoriId.Value != Guid.Empty)
-        {
-            query = query.Where(i => i.KategoriId == kategoriId.Value);
-        }
-
-        if (!string.IsNullOrWhiteSpace(arama))
-        {
-            var q = arama.Trim();
-            if (db.Database.IsNpgsql())
-            {
-                var pattern = $"%{EscapeLikePattern(q)}%";
-                query = query.Where(i =>
-                    EF.Functions.ILike(i.Baslik, pattern, "\\") ||
-                    EF.Functions.ILike(i.Aciklama, pattern, "\\") ||
-                    EF.Functions.ILike(i.Yer, pattern, "\\"));
-            }
-            else
-            {
-                var lowerQ = q.ToLowerInvariant();
-                query = query.Where(i =>
-                    i.Baslik.ToLower().Contains(lowerQ) ||
-                    i.Aciklama.ToLower().Contains(lowerQ) ||
-                    i.Yer.ToLower().Contains(lowerQ));
-            }
-        }
+        (sayfa, sayfaBoyutu) = ListingQueries.Normalize(sayfa, sayfaBoyutu);
+        var query = ListingQueries.Filter(db.Ilanlar.AsNoTracking(), db.Database.IsNpgsql(), tur, kategoriId, arama);
 
         var totalCount = await query.CountAsync(ct);
         var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)sayfaBoyutu));
 
-        var items = await query
-            .OrderByDescending(i => i.OlusturulmaTarihi)
-            .ThenByDescending(i => i.Id)
-            .Skip((sayfa - 1) * sayfaBoyutu)
-            .Take(sayfaBoyutu)
+        var items = await ListingQueries.Page(query, sayfa, sayfaBoyutu)
             .Select(i => new ListingSummaryResponse(
                 i.Id,
                 i.SahipId,
@@ -342,9 +297,4 @@ public sealed class ListingService(
         }
     }
 
-    private static string EscapeLikePattern(string value) =>
-        value
-            .Replace("\\", "\\\\", StringComparison.Ordinal)
-            .Replace("%", "\\%", StringComparison.Ordinal)
-            .Replace("_", "\\_", StringComparison.Ordinal);
 }

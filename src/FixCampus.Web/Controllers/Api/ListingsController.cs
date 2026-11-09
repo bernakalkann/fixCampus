@@ -3,6 +3,7 @@ using FixCampus.Web.Authorization;
 using FixCampus.Web.Contracts;
 using FixCampus.Web.Data;
 using FixCampus.Web.Models.Entities;
+using FixCampus.Web.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -27,50 +28,32 @@ public sealed class ListingsController(FixCampusDbContext db) : ControllerBase
         [FromQuery] int? sayfaBoyutu = null,
         CancellationToken ct = default)
     {
-        var query = db.Ilanlar.AsNoTracking().Where(x => x.Durum != "Gizli");
-
-        if (!string.IsNullOrWhiteSpace(tur))
+        var query = ListingQueries.Filter(db.Ilanlar.AsNoTracking(), db.Database.IsNpgsql(), tur, kategoriId, q);
+        if (sayfa.HasValue || sayfaBoyutu.HasValue)
         {
-            var normalizedTur = tur.Trim();
-            query = query.Where(x => x.Tur == normalizedTur);
+            var (page, pageSize) = ListingQueries.Normalize(sayfa, sayfaBoyutu);
+            return Ok(await Project(ListingQueries.Page(query, page, pageSize)).ToListAsync(ct));
         }
+        return Ok(await Project(ListingQueries.Order(query)).ToListAsync(ct));
+    }
 
-        if (kategoriId.HasValue && kategoriId.Value != Guid.Empty)
-        {
-            query = query.Where(x => x.KategoriId == kategoriId.Value);
-        }
-
-        if (!string.IsNullOrWhiteSpace(q))
-        {
-            var search = q.Trim();
-            if (db.Database.IsNpgsql())
-            {
-                var pattern = $"%{EscapeLikePattern(search)}%";
-                query = query.Where(x =>
-                    EF.Functions.ILike(x.Baslik, pattern, "\\") ||
-                    EF.Functions.ILike(x.Aciklama, pattern, "\\") ||
-                    EF.Functions.ILike(x.Yer, pattern, "\\"));
-            }
-            else
-            {
-                var lower = search.ToLowerInvariant();
-                query = query.Where(x =>
-                    x.Baslik.ToLower().Contains(lower) ||
-                    x.Aciklama.ToLower().Contains(lower) ||
-                    x.Yer.ToLower().Contains(lower));
-            }
-        }
-
-        var ordered = query.OrderByDescending(x => x.OlusturulmaTarihi).ThenBy(x => x.Id);
-
-        if (sayfa.HasValue && sayfaBoyutu.HasValue)
-        {
-            var page = Math.Max(1, sayfa.Value);
-            var pageSize = Math.Clamp(sayfaBoyutu.Value, 1, 50);
-            return Ok(await Project(ordered.Skip((page - 1) * pageSize).Take(pageSize)).ToListAsync(ct));
-        }
-
-        return Ok(await Project(ordered).ToListAsync(ct));
+    [HttpGet("sayfali")]
+    [EndpointSummary("Filtrelenmiş ilanları toplam kayıt ve sayfa bilgisiyle getirir.")]
+    [ProducesResponseType<ListingPageResponse>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> PagedList(
+        [FromQuery] string? tur = null,
+        [FromQuery] Guid? kategoriId = null,
+        [FromQuery] string? q = null,
+        [FromQuery] int? sayfa = null,
+        [FromQuery] int? sayfaBoyutu = null,
+        CancellationToken ct = default)
+    {
+        var query = ListingQueries.Filter(db.Ilanlar.AsNoTracking(), db.Database.IsNpgsql(), tur, kategoriId, q);
+        var (page, pageSize) = ListingQueries.Normalize(sayfa, sayfaBoyutu);
+        var total = await query.CountAsync(ct);
+        var items = await Project(ListingQueries.Page(query, page, pageSize)).ToListAsync(ct);
+        return Ok(new ListingPageResponse(items, total, page, pageSize,
+            Math.Max(1, (int)Math.Ceiling(total / (double)pageSize))));
     }
 
     [HttpGet("benim")]
@@ -194,13 +177,8 @@ public sealed class ListingsController(FixCampusDbContext db) : ControllerBase
     private static ListingResponse ToResponse(Ilan x) => new(x.Id, x.SahipId, x.KategoriId, x.Kategori.Ad,
         x.Baslik, x.Aciklama, x.Tur, x.Yer, x.BulusmaTarihi, x.Durum, x.OlusturulmaTarihi);
 
-    private static string EscapeLikePattern(string value) =>
-        value
-            .Replace("\\", "\\\\", StringComparison.Ordinal)
-            .Replace("%", "\\%", StringComparison.Ordinal)
-            .Replace("_", "\\_", StringComparison.Ordinal);
-
     private static IQueryable<ListingResponse> Project(IQueryable<Ilan> query) => query.Select(x =>
         new ListingResponse(x.Id, x.SahipId, x.KategoriId, x.Kategori.Ad, x.Baslik, x.Aciklama,
             x.Tur, x.Yer, x.BulusmaTarihi, x.Durum, x.OlusturulmaTarihi));
 }
+

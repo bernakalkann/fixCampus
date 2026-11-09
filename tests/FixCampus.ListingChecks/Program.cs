@@ -11,6 +11,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
+ListingQueryChecks.Run();
 await MyListingsChecks.RunAsync();
 
 Console.WriteLine("FixCampus Hafta 4 - Arama, Kategori, Sayfalama, İlanlarım ve Çift Hesap Doğrulama Kontrolleri Başlatılıyor...");
@@ -317,3 +318,4 @@ sealed class FixedClock(DateTimeOffset now) : TimeProvider
 {
     public override DateTimeOffset GetUtcNow() => now;
 }
+

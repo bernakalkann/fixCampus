@@ -41,3 +41,7 @@ public sealed record ListingResponse(Guid Id, Guid SahipId, Guid KategoriId, str
     string Durum, DateTimeOffset OlusturulmaTarihi);
 
 public sealed record CategoryResponse(Guid Id, string Ad, string Tur);
+
+
+public sealed record ListingPageResponse(
+    IReadOnlyList<ListingResponse> Items, int TotalCount, int Page, int PageSize, int TotalPages);
