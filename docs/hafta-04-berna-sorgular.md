@@ -59,3 +59,25 @@ I/ı normalizasyonu uygulanır.
 kaçışlarını, Türkçe/çok kelimeli aramayı, sayfalama toplamlarını ve MVC/mobil
 API'nin ortak kaydı okumasını denetler. GitHub Actions, yalnız geçici
 `fixcampus_test` veritabanında migration ve CRUD testlerini çalıştırır.
+
+## İnceleme düzeltmeleri
+
+`PagedList` metodunda `CancellationToken` son parametredir. Sorgu parametrelerinin
+adları ve HTTP sözleşmesi değişmez.
+
+PostgreSQL aramasında dört alan boşlukla ayrılan tek arama metnine birleştirilir.
+Türkçe İ/I dönüşümü iki `REPLACE` ile uygulanır; büyük/küçük harf karşılaştırmasını
+`ILIKE ALL (@patterns)` yapar. Tekrarlanan arama kelimeleri kaldırılır. Böylece
+her kelime için dört ayrı normalizasyon ve `LOWER` ifadesi üretilmez. Literal
+`%`, `_`, ters eğik çizgi, Türkçe ve farklı alanlara yayılan kelimeler için
+mevcut PostgreSQL regresyon testleri korunur. Şema değişikliği gerekmez.
+
+Bu düzenleme indeksli tam metin araması değildir; başında `%` olan alt metin
+araması büyük veri kümelerinde tarama gerektirebilir. Sonraki ölçek adımı gerçek
+veride `EXPLAIN (ANALYZE, BUFFERS)` ölçümüyle seçilmelidir: mevcut alt metin
+davranışı için normalleştirilmiş arama metni ve `pg_trgm` GIN indeksi; kelime
+kökü/sıralama isteyen ürün davranışı için `to_tsvector` ve GIN. `unaccent` ise
+ş/s gibi ayrımları da kaldırır ve mevcut eşleşme davranışını değiştirir. Bu
+geçişler ayrı migration ve eşleşme testleriyle yapılmalıdır.
+
+Npgsql çevirisi: https://www.npgsql.org/efcore/mapping/array.html

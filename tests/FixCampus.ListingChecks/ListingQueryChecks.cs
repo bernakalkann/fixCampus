@@ -38,6 +38,10 @@ internal static class ListingQueryChecks
         Require(sql.Contains("ILIKE") && sql.Contains("LIMIT") && sql.Contains("OFFSET"),
             "PostgreSQL filtre/sayfalama SQL'e çevrilemedi.");
         Require(sql.Contains(@"\%") && sql.Contains(@"\_"), "LIKE jokerleri kaçırılmadı.");
+        var multiWordSql = ListingQueries.Filter(db.Ilanlar, true, null, null,
+            "istatistik elektronik kütüphane istatistik").ToQueryString();
+        Require(multiWordSql.Contains("ILIKE ALL"), "Arama kelimeleri tek ALL koşuluna çevrilmedi.");
+        Require(!multiWordSql.Contains("lower("), "PostgreSQL ILIKE sorgusunda gereksiz LOWER var.");
         Console.WriteLine("PASS: Berna hafta 4 ortak sorgular, kararlı sayfalama, taşma ve PostgreSQL SQL çevirisi.");
     }
 

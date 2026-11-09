@@ -187,6 +187,8 @@ fixCampus platformunda ilan keşif deneyimi ve kişisel ilan yönetimi tamamlanm
    - Mobil uyumlu, responsive ve hover efektli ilan kartları.
 
 2. **Sorgular & API İyileştirmeleri (Berna Kalkan):**
+   - `GET /api/ilanlar/sayfali`: toplam kayıt/sayfa bilgisi, ortak Türkçe/çok kelimeli arama ve mobil ekran sorguları.
+   - [Berna'nın 4. hafta sorgu ve doğrulama belgesi](docs/hafta-04-berna-sorgular.md).
    - `GET /api/ilanlar`: `tur`, `kategoriId`, `q` (büyük/küçük harf duyarsız başlık, açıklama ve yer araması), `sayfa` ve `sayfaBoyutu` filtreleme ve sayfalama parametreleri.
    - `GET /api/ilanlar/benim`: Giriş yapmış kullanıcının kendi aktif ilanlarını listeleme ucu (`tur` filtreleme destekli).
    - `GET /api/kategoriler`: Türe göre kategori filtreleme desteği.

@@ -20,28 +20,35 @@ public static class ListingQueries
         }
         if (kategoriId.HasValue && kategoriId.Value != Guid.Empty)
             query = query.Where(x => x.KategoriId == kategoriId.Value);
-        foreach (var token in (search ?? "").Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries))
+        var tokens = (search ?? "").Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)
+            .Select(token => token.Replace("İ", "i", StringComparison.Ordinal)
+                .Replace("I", "ı", StringComparison.Ordinal).ToLowerInvariant())
+            .Distinct(StringComparer.Ordinal).ToArray();
+        if (tokens.Length == 0) return query;
+
+        if (postgres)
         {
-            var text = token.Replace("İ", "i", StringComparison.Ordinal)
-                .Replace("I", "ı", StringComparison.Ordinal).ToLowerInvariant();
-            if (postgres)
+            var patterns = tokens.Select(text => "%" + text
+                .Replace("\\", "\\\\", StringComparison.Ordinal)
+                .Replace("%", "\\%", StringComparison.Ordinal)
+                .Replace("_", "\\_", StringComparison.Ordinal) + "%").ToArray();
+            // Npgsql bunu ILIKE ALL (@patterns) olarak çevirir. Dört alan
+            // tek arama metninde birleştirilir; normalizasyon kelime başına
+            // tekrar üretilmez. PostgreSQL'in varsayılan kaçışı ters eğik çizgidir.
+            query = query.Where(x => patterns.All(pattern => EF.Functions.ILike(
+                (x.Baslik + " " + x.Aciklama + " " + x.Yer + " " +
+                    (x.Kategori != null ? x.Kategori.Ad : ""))
+                    .Replace("İ", "i").Replace("I", "ı"), pattern)));
+        }
+        else
+        {
+            foreach (var token in tokens)
             {
-                var pattern = "%" + text.Replace("\\", "\\\\", StringComparison.Ordinal)
-                    .Replace("%", "\\%", StringComparison.Ordinal)
-                    .Replace("_", "\\_", StringComparison.Ordinal) + "%";
+                var text = token;
                 query = query.Where(x =>
-                    EF.Functions.ILike(x.Baslik.Replace("İ", "i").Replace("I", "ı").ToLower(), pattern, "\\") ||
-                    EF.Functions.ILike(x.Aciklama.Replace("İ", "i").Replace("I", "ı").ToLower(), pattern, "\\") ||
-                    EF.Functions.ILike(x.Yer.Replace("İ", "i").Replace("I", "ı").ToLower(), pattern, "\\") ||
-                    (x.Kategori != null && EF.Functions.ILike(x.Kategori.Ad.Replace("İ", "i").Replace("I", "ı").ToLower(), pattern, "\\")));
-            }
-            else
-            {
-                query = query.Where(x =>
-                    x.Baslik.Replace("İ", "i").Replace("I", "ı").ToLower().Contains(text) ||
-                    x.Aciklama.Replace("İ", "i").Replace("I", "ı").ToLower().Contains(text) ||
-                    x.Yer.Replace("İ", "i").Replace("I", "ı").ToLower().Contains(text) ||
-                    (x.Kategori != null && x.Kategori.Ad.Replace("İ", "i").Replace("I", "ı").ToLower().Contains(text)));
+                    (x.Baslik + " " + x.Aciklama + " " + x.Yer + " " +
+                        (x.Kategori != null ? x.Kategori.Ad : ""))
+                        .Replace("İ", "i").Replace("I", "ı").ToLower().Contains(text));
             }
         }
         return query;
