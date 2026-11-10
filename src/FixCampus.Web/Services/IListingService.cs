@@ -1,4 +1,5 @@
 using System.Data.Common;
+using FixCampus.Web.Authorization;
 using FixCampus.Web.Contracts;
 using FixCampus.Web.Data;
 using FixCampus.Web.Models.Entities;
@@ -198,6 +199,41 @@ public sealed class ListingService(
 
         try
         {
+            if (!await db.Profiller.AnyAsync(p => p.Id == userId, ct))
+            {
+                var role = userEmail.Contains("admin", StringComparison.OrdinalIgnoreCase) || userDisplayName.Contains("Yönetici", StringComparison.OrdinalIgnoreCase)
+                    ? AppRoles.Administrator
+                    : AppRoles.Student;
+
+                var safeName = string.IsNullOrWhiteSpace(userDisplayName) ? "Kampüs Öğrencisi" : userDisplayName.Trim();
+                try
+                {
+                    if (db.Database.IsNpgsql())
+                    {
+                        await db.Database.ExecuteSqlInterpolatedAsync($"""
+                            INSERT INTO "Profiller" ("Id", "AdSoyad", "Rol", "OlusturulmaTarihi")
+                            VALUES ({userId}, {safeName}, {role}, {DateTimeOffset.UtcNow})
+                            ON CONFLICT ("Id") DO NOTHING
+                        """, ct);
+                    }
+                    else
+                    {
+                        db.Profiller.Add(new Profil
+                        {
+                            Id = userId,
+                            AdSoyad = safeName,
+                            Rol = role,
+                            OlusturulmaTarihi = _clock.GetUtcNow()
+                        });
+                        await db.SaveChangesAsync(ct);
+                    }
+                }
+                catch (Exception pEx)
+                {
+                    logger.LogWarning(pEx, "Profil otomatik oluşturulurken hata oluştu.");
+                }
+            }
+
             db.Ilanlar.Add(newListing);
             await db.SaveChangesAsync(ct);
             return new ListingOperationResult(true, ListingId: newListing.Id);

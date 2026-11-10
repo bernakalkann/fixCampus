@@ -843,6 +843,25 @@ public class AccountController : Controller
             new ClaimsPrincipal(claimsIdentity),
             authProperties);
 
+        if (HasDatabaseConfigured())
+        {
+            try
+            {
+                if (_db.Database.IsNpgsql())
+                {
+                    await _db.Database.ExecuteSqlInterpolatedAsync($"""
+                        INSERT INTO "Profiller" ("Id", "AdSoyad", "Rol", "OlusturulmaTarihi")
+                        VALUES ({userId}, {fullName}, {role}, {DateTimeOffset.UtcNow})
+                        ON CONFLICT ("Id") DO UPDATE SET "AdSoyad" = {fullName}, "Rol" = {role}
+                    """, HttpContext.RequestAborted);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Yerel oturum için veritabanında profil oluşturulamadı.");
+            }
+        }
+
         _logger.LogInformation("Kullanıcı yerel geliştirme oturumu açtı: {Email} ({Role})", email, role);
         TempData["SuccessMessage"] = $"Hoş geldiniz, {fullName}! Başarıyla giriş yaptınız.";
 
@@ -889,6 +908,25 @@ public class AccountController : Controller
             CookieAuthenticationDefaults.AuthenticationScheme,
             new ClaimsPrincipal(claimsIdentity),
             authProperties);
+
+        if (HasDatabaseConfigured())
+        {
+            try
+            {
+                if (_db.Database.IsNpgsql())
+                {
+                    await _db.Database.ExecuteSqlInterpolatedAsync($"""
+                        INSERT INTO "Profiller" ("Id", "AdSoyad", "Rol", "OlusturulmaTarihi")
+                        VALUES ({userId}, {trimmedName}, {AppRoles.Student}, {DateTimeOffset.UtcNow})
+                        ON CONFLICT ("Id") DO NOTHING
+                    """, HttpContext.RequestAborted);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Yerel kayıt için veritabanında profil oluşturulamadı.");
+            }
+        }
 
         TempData["SuccessMessage"] = $"Tebrikler {trimmedName}! fixCampus hesabınız başarıyla oluşturuldu ve oturumunuz açıldı.";
         return RedirectToAction("Index", "Home");
