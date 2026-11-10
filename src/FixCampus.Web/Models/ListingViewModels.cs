@@ -6,6 +6,8 @@ namespace FixCampus.Web.Models;
 
 public sealed class ListingListViewModel
 {
+    public string? ErrorMessage { get; init; }
+    public int? RetryPage { get; init; }
     public PagedListingsResponse PagedListings { get; init; } = new([], 0, 1, 12, 1);
     public IReadOnlyList<CategoryDto> Categories { get; init; } = [];
     public string? SelectedTur { get; init; }

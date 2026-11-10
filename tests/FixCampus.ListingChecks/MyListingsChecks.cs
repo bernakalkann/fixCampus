@@ -33,18 +33,34 @@ internal static class MyListingsChecks
         Check(vm.Listings.Single().Tur=="Kayip" && vm.TotalCount==2 && vm.SocialCount==1 && vm.LostFoundCount==1,"Filtre sayaçları değiştirdi.");
         vm=(MyListingsViewModel)((ViewResult)await Controller(first).Benim("Buluntu")).Model!;
         Check(vm.Listings.Count==0 && vm.ErrorMessage==null,"Boş filtre sonucu hata sayıldı.");
+        foreach (var (input, expected) in new[] { ("sosyal","Sosyal"), ("KAYIP","Kayip"), (" bUlUnTu ","Buluntu") })
+        {
+            vm=(MyListingsViewModel)((ViewResult)await Controller(first).Benim(input)).Model!;
+            Check(vm.SelectedTur==expected && vm.Listings.All(x=>x.Tur==expected),"Tür harf/boşluk normalleştirmesi hatalı.");
+        }
+        vm=(MyListingsViewModel)((ViewResult)await Controller(first).Benim("  ")).Model!;
+        Check(vm.SelectedTur==null && vm.TotalCount==2,"Boş tür tüm ilanları göstermeli.");
         var before=calls;
         Check(await Controller(null).Benim() is ChallengeResult && await Controller(Guid.Empty).Benim() is ChallengeResult,"Kimliksiz oturum kabul edildi.");
         Check(await Controller(first).Benim("Root") is BadRequestObjectResult && calls==before,"Geçersiz filtre sorguya gönderildi.");
         probe.Read=_=>throw new TimeoutException();
         c=Controller(first); vm=(MyListingsViewModel)((ViewResult)await c.Benim("Kayip")).Model!;
         Check(c.Response.StatusCode==503 && vm.ErrorMessage!=null && vm.SelectedTur=="Kayip","Bağlantı hatası boş liste gibi gösterildi.");
-        Console.WriteLine("PASS: gerçek İlanlarım controller akışı, iki oturum kimliği, sahte userId, filtre/sayaç, boş sonuç ve 503 hata durumu.");
+        var category=Guid.NewGuid();
+        c=Controller(first);
+        var search=(ListingListViewModel)((ViewResult)await c.Index("Sosyal",category,"kütüphane",3)).Model!;
+        Check(c.Response.StatusCode==503 && search.ErrorMessage!=null && search.SelectedTur=="Sosyal" &&
+            search.SelectedKategoriId==category && search.SearchQuery=="kütüphane" && search.RetryPage==3,
+            "Arama hatası 503 dönmeli ve yeniden deneme filtrelerini korumalı.");        Console.WriteLine("PASS: gerçek İlanlarım controller akışı, iki oturum kimliği, sahte userId, filtre/sayaç, boş sonuç ve 503 hata durumu.");
     }
 }
 public class MyListingsServiceProbe : DispatchProxy
 {
     public Func<Guid,IReadOnlyList<ListingSummaryResponse>> Read { get; set; } = null!;
-    protected override object? Invoke(MethodInfo? method,object?[]? args) => method?.Name=="GetUserListingsAsync"
-        ? Task.FromResult(Read((Guid)args![0]!)) : throw new NotSupportedException(method?.Name);
+    protected override object? Invoke(MethodInfo? method,object?[]? args) => method?.Name switch
+    {
+        "GetUserListingsAsync" => Task.FromResult(Read((Guid)args![0]!)),
+        "GetListingsAsync" => throw new TimeoutException(),
+        _ => throw new NotSupportedException(method?.Name)
+    };
 }

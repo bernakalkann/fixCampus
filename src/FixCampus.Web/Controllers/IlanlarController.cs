@@ -46,9 +46,11 @@ public sealed class IlanlarController(
         catch (Exception ex) when (ex is DbException or DbUpdateException or TimeoutException or InvalidOperationException)
         {
             logger.LogError(ex, "İlan listesi yüklenirken veritabanı hatası oluştu.");
-            TempData["ErrorMessage"] = "İlanlar yüklenirken veritabanı bağlantısı kurulamadı.";
+            Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
             return View(new ListingListViewModel
             {
+                ErrorMessage = "İlanlar yüklenemedi. Bağlantınızı kontrol edip tekrar deneyin.",
+                RetryPage = sayfa,
                 SelectedTur = tur,
                 SelectedKategoriId = kategoriId,
                 SearchQuery = q
@@ -82,8 +84,9 @@ public sealed class IlanlarController(
             return Challenge();
         }
 
-        var selectedType = string.IsNullOrWhiteSpace(tur) ? null : tur.Trim();
-        if (selectedType is not (null or "Sosyal" or "Kayip" or "Buluntu"))
+        var selectedType = new[] { "Sosyal", "Kayip", "Buluntu" }
+            .FirstOrDefault(value => string.Equals(value, tur?.Trim(), StringComparison.OrdinalIgnoreCase));
+        if (!string.IsNullOrWhiteSpace(tur) && selectedType is null)
             return BadRequest("Geçersiz ilan türü.");
 
         try

@@ -1,0 +1,7 @@
+@model FixCampus.Web.Models.ListingLoadErrorViewModel
+<div class="alert alert-warning" role="alert">
+    <p>@Model.Message</p>
+    <a asp-controller="Ilanlar" asp-action="@Model.Action" asp-route-tur="@Model.Tur"
+       asp-route-kategoriId="@Model.KategoriId" asp-route-q="@Model.Query" asp-route-sayfa="@Model.Page"
+       class="btn btn-outline-dark btn-sm">Tekrar Dene</a>
+</div>

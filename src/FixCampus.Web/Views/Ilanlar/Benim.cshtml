@@ -21,10 +21,7 @@
 
     @if (Model.ErrorMessage is not null)
     {
-        <div class="alert alert-warning" role="alert">
-            <p>@Model.ErrorMessage</p>
-            <a asp-action="Benim" asp-route-tur="@Model.SelectedTur" class="btn btn-outline-dark btn-sm">Tekrar Dene</a>
-        </div>
+        <partial name="_ListingLoadError" model="@(new FixCampus.Web.Models.ListingLoadErrorViewModel(Model.ErrorMessage, "Benim", Model.SelectedTur))" />
     }
     else
     {

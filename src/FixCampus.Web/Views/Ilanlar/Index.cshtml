@@ -20,6 +20,12 @@
         </div>
     </div>
 
+    @if (Model.ErrorMessage is not null)
+    {
+        <partial name="_ListingLoadError" model="@(new FixCampus.Web.Models.ListingLoadErrorViewModel(Model.ErrorMessage, "Index", Model.SelectedTur, Model.SelectedKategoriId, Model.SearchQuery, Model.RetryPage))" />
+    }
+    else
+    {
     <!-- Hızlı Tür Filtreleme Butonları (Pills) -->
     <div class="d-flex flex-wrap gap-2 mb-3">
         <a asp-action="Index" asp-route-q="@Model.SearchQuery" class="btn btn-sm rounded-pill @(string.IsNullOrEmpty(Model.SelectedTur) ? "btn-dark" : "btn-outline-secondary")">
@@ -221,5 +227,6 @@
                 </nav>
             </div>
         }
+    }
     }
 </div>
