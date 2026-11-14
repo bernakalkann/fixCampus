@@ -15,7 +15,7 @@ namespace FixCampus.Web.Controllers.Api;
 [ProducesResponseType(StatusCodes.Status401Unauthorized)]
 [ProducesResponseType(StatusCodes.Status403Forbidden)]
 [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
-public sealed class ListingsController(FixCampusDbContext db) : ControllerBase
+public sealed class ListingsController(FixCampusDbContext db, TimeProvider? clock = null) : ControllerBase
 {
     [HttpGet]
     [EndpointSummary("Gizli olmayan ilanları filtreli ve sayfalı olarak listeler.")]
@@ -28,7 +28,7 @@ public sealed class ListingsController(FixCampusDbContext db) : ControllerBase
         [FromQuery] int? sayfaBoyutu = null,
         CancellationToken ct = default)
     {
-        var query = ListingQueries.Filter(db.Ilanlar.AsNoTracking(), db.Database.IsNpgsql(), tur, kategoriId, q);
+        var query = ListingQueries.Filter(db.Ilanlar.AsNoTracking(), db.Database.IsNpgsql(), tur, kategoriId, q, visibleAtUtc: (clock ?? TimeProvider.System).GetUtcNow());
         if (sayfa.HasValue || sayfaBoyutu.HasValue)
         {
             var (page, pageSize) = ListingQueries.Normalize(sayfa, sayfaBoyutu);
@@ -50,7 +50,7 @@ public sealed class ListingsController(FixCampusDbContext db) : ControllerBase
         [FromQuery] bool aktifSosyal = false,
         CancellationToken ct = default)
     {
-        var query = ListingQueries.Filter(db.Ilanlar.AsNoTracking(), db.Database.IsNpgsql(), tur, kategoriId, q, kayipBuluntu, aktifSosyal);
+        var query = ListingQueries.Filter(db.Ilanlar.AsNoTracking(), db.Database.IsNpgsql(), tur, kategoriId, q, kayipBuluntu, aktifSosyal, (clock ?? TimeProvider.System).GetUtcNow());
         var (page, pageSize) = ListingQueries.Normalize(sayfa, sayfaBoyutu);
         var total = await query.CountAsync(ct);
         var items = await Project(ListingQueries.Page(query, page, pageSize)).ToListAsync(ct);

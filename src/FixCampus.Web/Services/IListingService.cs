@@ -60,7 +60,7 @@ public sealed class ListingService(
         CancellationToken ct = default)
     {
         (sayfa, sayfaBoyutu) = ListingQueries.Normalize(sayfa, sayfaBoyutu);
-        var query = ListingQueries.Filter(db.Ilanlar.AsNoTracking(), db.Database.IsNpgsql(), tur, kategoriId, arama);
+        var query = ListingQueries.Filter(db.Ilanlar.AsNoTracking(), db.Database.IsNpgsql(), tur, kategoriId, arama, visibleAtUtc: _clock.GetUtcNow());
 
         var totalCount = await query.CountAsync(ct);
         var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)sayfaBoyutu));

@@ -8,9 +8,11 @@ public static class ListingQueries
 {
     public static IQueryable<Ilan> Filter(IQueryable<Ilan> query, bool postgres,
         string? tur, Guid? kategoriId, string? search,
-        bool lostFoundOnly = false, bool activeSocialOnly = false)
+        bool lostFoundOnly = false, bool activeSocialOnly = false, DateTimeOffset? visibleAtUtc = null)
     {
-        query = query.Where(x => x.Durum != "Gizli");
+        var now = visibleAtUtc ?? DateTimeOffset.UtcNow;
+        query = query.Where(x => x.Durum != "Gizli" &&
+            (x.Tur != "Sosyal" || (x.BulusmaTarihi.HasValue && x.BulusmaTarihi > now)));
         if (lostFoundOnly) query = query.Where(x => x.Tur == "Kayip" || x.Tur == "Buluntu");
         if (activeSocialOnly) query = query.Where(x => x.Tur != "Sosyal" || x.Durum == "Aktif");
         if (!string.IsNullOrWhiteSpace(tur))
