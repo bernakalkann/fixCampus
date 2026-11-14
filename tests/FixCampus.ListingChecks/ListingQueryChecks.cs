@@ -17,7 +17,7 @@ internal static class ListingQueryChecks
                 Tur = "Kayip", Aciklama = "USB %_ adaptör", OlusturulmaTarihi = time },
             new Ilan { KategoriId = category, Tur = "Kayip", Baslik = "USB %_", Durum = "Gizli" },
             new Ilan { KategoriId = Guid.NewGuid(), Tur = "Kayip", Baslik = "USB %_" },
-            new Ilan { KategoriId = category, Tur = "Sosyal", Baslik = "USB %_" }
+            new Ilan { KategoriId = category, Tur = "Sosyal", Baslik = "USB %_", BulusmaTarihi = time.AddDays(1) }
         }.AsQueryable();
         var filtered = ListingQueries.Filter(rows, false, " Kayip ", category, " USB %_ ");
         Require(filtered.Count() == 2, "Birleşik filtreler/gizli ilan/literal arama hatalı.");

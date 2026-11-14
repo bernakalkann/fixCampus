@@ -12,6 +12,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
 ListingQueryChecks.Run();
+ExpiryChecks.Run();
 await MyListingsChecks.RunAsync();
 
 Console.WriteLine("FixCampus Hafta 4 - Arama, Kategori, Sayfalama, İlanlarım ve Çift Hesap Doğrulama Kontrolleri Başlatılıyor...");

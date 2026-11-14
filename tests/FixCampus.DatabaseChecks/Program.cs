@@ -271,6 +271,7 @@ db.ChangeTracker.Clear();
 Require((await db.Ilanlar.SingleAsync(x => x.Id == socialSaved.Id)).BulusmaTarihi ==
     saveRequest.BulusmaTarihi.Value.ToUniversalTime(), "Tarih UTC olarak kaydedilmedi.");
 await MyListingsDatabaseChecks.RunAsync(db, userId, otherId, CancellationToken.None);
+await ExpiryDatabaseChecks.RunAsync(db, userId);
 await ListingSearchDatabaseChecks.RunAsync(db, userId, otherId, Listings(userId), socialCategory);
 
 db.Katilimlar.Add(new Katilim { IlanId = saved.Id, ProfilId = otherId });
