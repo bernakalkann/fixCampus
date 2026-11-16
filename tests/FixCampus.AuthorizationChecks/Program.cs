@@ -7,6 +7,7 @@ using FixCampus.Web.Authorization;
 using FixCampus.Web.Controllers.Api;
 using FixCampus.Web.Data;
 using FixCampus.Web.OpenApi;
+using FixCampus.Web.Networking;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -45,6 +46,7 @@ var roleStore = new TestRoleStore();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddOpenApi(options => options.AddDocumentTransformer<BearerSecurityDocumentTransformer>());
 builder.Services.AddControllers().AddApplicationPart(typeof(AccessController).Assembly);
+builder.AddLocalFlutterCors();
 builder.Services.AddDbContext<FixCampusDbContext>(options => options.UseNpgsql(
     "Host=127.0.0.1;Database=unused;Username=test;Password=test"));
 builder.Services.AddSingleton(new SupabaseAuthClient(new HttpClient(new TestAuthTransport()), builder.Configuration));
@@ -59,6 +61,8 @@ builder.Services.Replace(ServiceDescriptor.Singleton<IProfileRoleReader>(roleSto
 var inProcess = args.Contains("--in-process") ? new InProcessServer() : null;
 if (inProcess is not null) builder.Services.AddSingleton<IServer>(inProcess);
 await using var app = builder.Build();
+app.UseRouting();
+app.UseLocalFlutterCors();
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -141,6 +145,39 @@ try
         await Check(path, "invalid", HttpStatusCode.Unauthorized, method: method);
         await Check(path, "missing-profile", HttpStatusCode.Forbidden, method: method);
         await Check(path, null, HttpStatusCode.Unauthorized, cookie: webCookie, method: method);
+    }
+    foreach (var (origin, allowed) in new[] { ("http://localhost:5173", true),
+        ("http://127.0.0.1:49832", true), ("http://[::1]:5173", true),
+        ("https://example.org", false), ("http://localhost.example.org:5173", false), ("null", false) })
+    {
+        using var preflight = new HttpRequestMessage(HttpMethod.Options, listingPath + "/katilim");
+        preflight.Headers.Add("Origin", origin);
+        preflight.Headers.Add("Access-Control-Request-Method", "PUT");
+        preflight.Headers.Add("Access-Control-Request-Headers", "authorization,content-type");
+        using var result = await http.SendAsync(preflight);
+        var hasOrigin = result.Headers.TryGetValues("Access-Control-Allow-Origin", out var origins);
+        if (result.StatusCode != HttpStatusCode.NoContent ||
+            (allowed ? !hasOrigin || origins!.Single() != origin : hasOrigin) ||
+            result.Headers.Contains("Access-Control-Allow-Credentials"))
+            throw new Exception("Flutter web CORS origin policy did not match the expected result.");
+        if (allowed &&
+            (!result.Headers.GetValues("Access-Control-Allow-Methods").Any(x => x.Contains("PUT")) ||
+             !result.Headers.GetValues("Access-Control-Allow-Headers").Any(x =>
+                 x.Contains("Authorization", StringComparison.OrdinalIgnoreCase))))
+            throw new Exception("Participation preflight did not allow the required method and header.");
+        count++;
+    }
+
+    using (var crossOriginJoin = new HttpRequestMessage(HttpMethod.Put, listingPath + "/katilim"))
+    {
+        crossOriginJoin.Headers.Add("Origin", "http://localhost:5173");
+        using var response = await http.SendAsync(crossOriginJoin);
+        // The in-process server does not fire response OnStarting callbacks.
+        if (response.StatusCode != HttpStatusCode.Unauthorized ||
+            (inProcess is null && (!response.Headers.TryGetValues("Access-Control-Allow-Origin", out var origins) ||
+                origins.Single() != "http://localhost:5173")))
+            throw new Exception("Allowing a Flutter web origin changed the Bearer requirement.");
+        count++;
     }
     // These requests must be rejected before any database query is attempted.
     foreach (var json in new[] { "{}", "null", "{", """

@@ -2,6 +2,7 @@ using FixCampus.Web.Auth;
 using FixCampus.Web.Authorization;
 using FixCampus.Web.Data;
 using FixCampus.Web.OpenApi;
+using FixCampus.Web.Networking;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
@@ -10,6 +11,7 @@ using System.Threading.RateLimiting;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
+builder.AddLocalFlutterCors();
 builder.Services.AddOpenApi(options => options.AddDocumentTransformer<BearerSecurityDocumentTransformer>());
 builder.Services.AddHttpClient<SupabaseAuthClient>(client => client.Timeout = TimeSpan.FromSeconds(15));
 
@@ -87,6 +89,7 @@ else
 
 app.UseStaticFiles();
 app.UseRouting();
+app.UseLocalFlutterCors();
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
