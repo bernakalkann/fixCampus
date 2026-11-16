@@ -40,6 +40,8 @@ public sealed record ListingResponse(Guid Id, Guid SahipId, Guid KategoriId, str
     string Baslik, string Aciklama, string Tur, string Yer, DateTimeOffset? BulusmaTarihi,
     string Durum, DateTimeOffset OlusturulmaTarihi, int KatilimciSayisi = 0, bool Katiliyor = false);
 
+public sealed record ParticipantResponse(string AdSoyad, string? Bolum, string? Sinif);
+
 public sealed record CategoryResponse(Guid Id, string Ad, string Tur);
 
 

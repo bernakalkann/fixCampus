@@ -141,6 +141,29 @@ public sealed class ListingsController(FixCampusDbContext db, TimeProvider? cloc
         return NoContent();
     }
 
+    [HttpGet("{id:guid}/katilimcilar")]
+    [EndpointSummary("Sosyal buluşmanın katılımcılarını yalnızca ilan sahibine gösterir.")]
+    [ProducesResponseType<List<ParticipantResponse>>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetParticipants(Guid id, CancellationToken ct)
+    {
+        if (!TryUserId(out var userId)) return Unauthorized();
+
+        var listing = db.Ilanlar.AsNoTracking()
+            .Where(x => x.Id == id && x.Tur == "Sosyal" && x.Durum != "Gizli");
+        var ownerId = await listing.Select(x => (Guid?)x.SahipId).SingleOrDefaultAsync(ct);
+        if (ownerId is null) return NotFound(new { message = "Sosyal ilan bulunamadı." });
+        if (ownerId != userId) return Forbid("Supabase");
+
+        var participants = await listing.Where(x => x.SahipId == userId)
+            .SelectMany(x => x.Katilimlar)
+            .OrderBy(x => x.KatilimTarihi).ThenBy(x => x.Id)
+            .Select(x => new ParticipantResponse(x.Profil.AdSoyad, x.Profil.Bolum, x.Profil.Sinif))
+            .ToListAsync(ct);
+
+        return Ok(participants);
+    }
+
     [HttpPut("{id:guid}/katilim")]
     [EndpointSummary("Aktif bir buluşmaya giriş yapan kullanıcı adına katılır.")]
     [ProducesResponseType<ListingResponse>(StatusCodes.Status200OK)]

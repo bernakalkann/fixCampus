@@ -281,6 +281,16 @@ for (var attempt = 0; attempt < 2; attempt++)
         { Value: ListingResponse { Katiliyor: true, KatilimciSayisi: 1 } },
         "Katılım eklenemedi veya tekrar istek çift kayıt oluşturdu.");
 
+var participantProfile = await db.Profiller.AsNoTracking().SingleAsync(x => x.Id == otherId);
+Require(await Listings(userId).GetParticipants(socialSaved.Id, default) is OkObjectResult
+    { Value: List<ParticipantResponse> participants } &&
+    participants.SequenceEqual([new ParticipantResponse(participantProfile.AdSoyad, participantProfile.Bolum, participantProfile.Sinif)]),
+    "İlan sahibi katılımcı profilini göremedi veya çift kayıt döndü.");
+Require(await joining.GetParticipants(socialSaved.Id, default) is ForbidResult,
+    "Katılımcı, sahibi olmadığı ilanın katılımcı listesine erişebildi.");
+Require(await Listings(userId).GetParticipants(saved.Id, default) is NotFoundObjectResult,
+    "Kayıp ilanı için katılımcı listesi açıldı.");
+
 Require(await Listings(userId).Get(socialSaved.Id, default) is OkObjectResult
     { Value: ListingResponse { Katiliyor: false, KatilimciSayisi: 1 } },
     "Başka kullanıcının katılımı, ilan sahibinin durumu olarak döndü.");
@@ -294,6 +304,10 @@ for (var attempt = 0; attempt < 2; attempt++)
         "Katılım geri alınamadı veya tekrar istek sonucu değiştirdi.");
 Require(!await db.Katilimlar.AnyAsync(x => x.IlanId == socialSaved.Id),
     "Geri alınan katılım veritabanında kaldı.");
+
+Require(await Listings(userId).GetParticipants(socialSaved.Id, default) is OkObjectResult
+    { Value: List<ParticipantResponse> { Count: 0 } }, "Geri alınan katılım listede kaldı.");
+Console.WriteLine("PASS: katılımcı listesi, ilan sahibi yetkisi ve katılım geri alma.");
 
 await MyListingsDatabaseChecks.RunAsync(db, userId, otherId, CancellationToken.None);
 await ExpiryDatabaseChecks.RunAsync(db, userId);

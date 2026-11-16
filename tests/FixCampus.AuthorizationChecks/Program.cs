@@ -139,6 +139,7 @@ try
     foreach (var (path, method) in new[] { ("/api/ilanlar", HttpMethod.Get), (listingPath, HttpMethod.Get),
         ("/api/ilanlar", HttpMethod.Post), (listingPath, HttpMethod.Put), (listingPath, HttpMethod.Delete),
         (listingPath + "/katilim", HttpMethod.Put), (listingPath + "/katilim", HttpMethod.Delete),
+        (listingPath + "/katilimcilar", HttpMethod.Get),
         ("/api/kategoriler", HttpMethod.Get) })
     {
         await Check(path, null, HttpStatusCode.Unauthorized, method: method);
@@ -268,6 +269,7 @@ try
         ("/api/ilanlar", "post", "201"), ("/api/ilanlar/{id}", "get", "200"),
         ("/api/ilanlar/{id}", "put", "200"), ("/api/ilanlar/{id}", "delete", "204"),
         ("/api/ilanlar/{id}/katilim", "put", "200"), ("/api/ilanlar/{id}/katilim", "delete", "200"),
+        ("/api/ilanlar/{id}/katilimcilar", "get", "200"),
         ("/api/kategoriler", "get", "200") })
     {
         var operation = paths.GetProperty(path).GetProperty(method);
