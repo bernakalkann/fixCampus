@@ -38,7 +38,7 @@ public sealed class SaveListingRequest : IValidatableObject
 
 public sealed record ListingResponse(Guid Id, Guid SahipId, Guid KategoriId, string Kategori,
     string Baslik, string Aciklama, string Tur, string Yer, DateTimeOffset? BulusmaTarihi,
-    string Durum, DateTimeOffset OlusturulmaTarihi);
+    string Durum, DateTimeOffset OlusturulmaTarihi, int KatilimciSayisi = 0, bool Katiliyor = false);
 
 public sealed record CategoryResponse(Guid Id, string Ad, string Tur);
 

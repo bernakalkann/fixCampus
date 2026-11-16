@@ -123,7 +123,7 @@ public sealed class ListingsController(FixCampusDbContext db, TimeProvider? cloc
         Apply(listing, request);
         listing.Kategori = category;
         await db.SaveChangesAsync(ct);
-        return Ok(ToResponse(listing));
+        return await Get(id, ct);
     }
 
     [HttpDelete("{id:guid}")]
@@ -141,7 +141,60 @@ public sealed class ListingsController(FixCampusDbContext db, TimeProvider? cloc
         return NoContent();
     }
 
-    private bool TryUserId(out Guid id) => Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out id)
+    [HttpPut("{id:guid}/katilim")]
+    [EndpointSummary("Aktif bir buluşmaya giriş yapan kullanıcı adına katılır.")]
+    [ProducesResponseType<ListingResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public Task<IActionResult> Join(Guid id, CancellationToken ct) => SetParticipation(id, true, ct);
+
+    [HttpDelete("{id:guid}/katilim")]
+    [EndpointSummary("Giriş yapan kullanıcının buluşma katılımını geri alır.")]
+    [ProducesResponseType<ListingResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public Task<IActionResult> Leave(Guid id, CancellationToken ct) => SetParticipation(id, false, ct);
+
+    private async Task<IActionResult> SetParticipation(Guid id, bool attending, CancellationToken ct)
+    {
+        if (!TryUserId(out var userId)) return Unauthorized();
+
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        // İlan düzenlenirken veya silinirken katılım uygunluğu değişmesin.
+        var lockedIds = await db.Database.SqlQuery<Guid>($"""
+            SELECT "Id" AS "Value" FROM "Ilanlar" WHERE "Id" = {id} FOR SHARE
+            """).ToListAsync(ct);
+        var listingQuery = db.Ilanlar.AsNoTracking().Where(x => x.Id == id && x.Durum != "Gizli");
+        var meeting = lockedIds.Count == 0 ? null : await listingQuery
+            .Select(x => new { x.Tur, x.Durum, x.BulusmaTarihi }).SingleOrDefaultAsync(ct);
+        if (meeting is null) return NotFound(new { message = "İlan bulunamadı." });
+
+        var now = (clock ?? TimeProvider.System).GetUtcNow();
+        if (meeting.Tur != "Sosyal" || meeting.Durum != "Aktif" ||
+            meeting.BulusmaTarihi is not { } meetingTime || meetingTime <= now)
+            return Conflict(new { message = "Bu ilan katılıma açık değil." });
+
+        if (attending)
+        {
+            // Benzersiz indeks, eşzamanlı katılma isteklerini tek kayda indirir.
+            await db.Database.ExecuteSqlInterpolatedAsync($"""
+                INSERT INTO "Katilimlar" ("Id", "IlanId", "ProfilId", "KatilimTarihi")
+                VALUES ({Guid.NewGuid()}, {id}, {userId}, {now})
+                ON CONFLICT ("IlanId", "ProfilId") DO NOTHING
+                """, ct);
+        }
+        else
+        {
+            await db.Katilimlar.Where(x => x.IlanId == id && x.ProfilId == userId)
+                .ExecuteDeleteAsync(ct);
+        }
+
+        var listing = await Project(listingQuery).SingleAsync(ct);
+        await transaction.CommitAsync(ct);
+        return Ok(listing);
+    }
+
+    private bool TryUserId(out Guid id) => Guid.TryParse(ControllerContext.HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier), out id)
         && id != Guid.Empty;
 
     private bool ValidateRequest(SaveListingRequest request)
@@ -179,8 +232,12 @@ public sealed class ListingsController(FixCampusDbContext db, TimeProvider? cloc
     private static ListingResponse ToResponse(Ilan x) => new(x.Id, x.SahipId, x.KategoriId, x.Kategori.Ad,
         x.Baslik, x.Aciklama, x.Tur, x.Yer, x.BulusmaTarihi, x.Durum, x.OlusturulmaTarihi);
 
-    private static IQueryable<ListingResponse> Project(IQueryable<Ilan> query) => query.Select(x =>
-        new ListingResponse(x.Id, x.SahipId, x.KategoriId, x.Kategori.Ad, x.Baslik, x.Aciklama,
-            x.Tur, x.Yer, x.BulusmaTarihi, x.Durum, x.OlusturulmaTarihi));
+    private IQueryable<ListingResponse> Project(IQueryable<Ilan> query)
+    {
+        TryUserId(out var userId);
+        return query.Select(x => new ListingResponse(x.Id, x.SahipId, x.KategoriId, x.Kategori.Ad,
+            x.Baslik, x.Aciklama, x.Tur, x.Yer, x.BulusmaTarihi, x.Durum, x.OlusturulmaTarihi,
+            x.Katilimlar.Count, x.Katilimlar.Any(k => k.ProfilId == userId)));
+    }
 }
 

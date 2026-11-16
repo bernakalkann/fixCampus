@@ -270,6 +270,31 @@ var socialSaved = (ListingResponse)socialCreated.Value!;
 db.ChangeTracker.Clear();
 Require((await db.Ilanlar.SingleAsync(x => x.Id == socialSaved.Id)).BulusmaTarihi ==
     saveRequest.BulusmaTarihi.Value.ToUniversalTime(), "Tarih UTC olarak kaydedilmedi.");
+Require(await Listings(otherId).Join(saved.Id, default) is ConflictObjectResult,
+    "Kayıp ilanı katılımı kabul etti.");
+Require(await Listings(otherId).Join(missingId, default) is NotFoundObjectResult,
+    "Olmayan ilan katılımda 404 dönmedi.");
+
+var joining = Listings(otherId);
+for (var attempt = 0; attempt < 2; attempt++)
+    Require(await joining.Join(socialSaved.Id, default) is OkObjectResult
+        { Value: ListingResponse { Katiliyor: true, KatilimciSayisi: 1 } },
+        "Katılım eklenemedi veya tekrar istek çift kayıt oluşturdu.");
+
+Require(await Listings(userId).Get(socialSaved.Id, default) is OkObjectResult
+    { Value: ListingResponse { Katiliyor: false, KatilimciSayisi: 1 } },
+    "Başka kullanıcının katılımı, ilan sahibinin durumu olarak döndü.");
+Require(await Listings(userId).Leave(socialSaved.Id, default) is OkObjectResult
+    { Value: ListingResponse { Katiliyor: false, KatilimciSayisi: 1 } },
+    "Katılımı geri alma başka kullanıcının kaydını etkiledi.");
+
+for (var attempt = 0; attempt < 2; attempt++)
+    Require(await joining.Leave(socialSaved.Id, default) is OkObjectResult
+        { Value: ListingResponse { Katiliyor: false, KatilimciSayisi: 0 } },
+        "Katılım geri alınamadı veya tekrar istek sonucu değiştirdi.");
+Require(!await db.Katilimlar.AnyAsync(x => x.IlanId == socialSaved.Id),
+    "Geri alınan katılım veritabanında kaldı.");
+
 await MyListingsDatabaseChecks.RunAsync(db, userId, otherId, CancellationToken.None);
 await ExpiryDatabaseChecks.RunAsync(db, userId);
 await ListingSearchDatabaseChecks.RunAsync(db, userId, otherId, Listings(userId), socialCategory);
@@ -285,9 +310,16 @@ Require(!await db.Ilanlar.AnyAsync(x => x.Id == saved.Id) &&
     !await db.IlanFotograflari.AnyAsync(x => x.IlanId == saved.Id) &&
     !await db.Sikayetler.AnyAsync(x => x.IlanId == saved.Id), "İlan veya bağlı kayıtlar silinmedi.");
 var socialEntity = await db.Ilanlar.SingleAsync(x => x.Id == socialSaved.Id);
+socialEntity.BulusmaTarihi = DateTimeOffset.UtcNow.AddMinutes(-1);
+await db.SaveChangesAsync();
+Require(await joining.Join(socialSaved.Id, default) is ConflictObjectResult,
+    "Süresi dolmuş ilan katılımı kabul etti.");
 socialEntity.Durum = "Gizli";
 await db.SaveChangesAsync();
 Require(await Listings(userId).Get(socialSaved.Id, default) is NotFoundObjectResult, "Gizli ilan detayda gösterildi.");
+Require(await joining.Join(socialSaved.Id, default) is NotFoundObjectResult,
+    "Gizli ilan katılımda 404 dönmedi.");
+Console.WriteLine("PASS: PostgreSQL katılma, tekrar istek, hesap ayrımı, geri alma, süre ve gizlilik.");
 var list = (OkObjectResult)await Listings(userId).List(default);
 Require(((List<ListingResponse>)list.Value!).All(x => x.Durum != "Gizli"), "Gizli ilan listede gösterildi.");
 Require(await new CategoriesController(db).List(default) is OkObjectResult, "Kategori listesi alınamadı.");
@@ -297,4 +329,3 @@ static void Require(bool condition, string message)
 {
     if (!condition) throw new Exception(message);
 }
-

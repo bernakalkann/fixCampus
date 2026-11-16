@@ -35,6 +35,12 @@ static void Require(bool value, string message)
 {
     if (!value) throw new InvalidOperationException(message);
 }
+static void RequireParticipation(JsonElement listing, int count, bool attending)
+{
+    Require(listing.GetProperty("katilimciSayisi").GetInt32() == count &&
+        listing.GetProperty("katiliyor").GetBoolean() == attending,
+        "Katılım sayısı veya kullanıcının katılım durumu yanlış.");
+}
 static string Password()
 {
     if (Console.IsInputRedirected) throw new InvalidOperationException("Şifre girişi için normal Terminal kullanın.");
@@ -71,10 +77,12 @@ try
     await Send(HttpMethod.Get, "/swagger/index.html", HttpStatusCode.OK);
     var openapi = await Send(HttpMethod.Get, "/openapi/v1.json", HttpStatusCode.OK);
     foreach (var (path, method) in new[] { ("/api/ilanlar", "get"), ("/api/ilanlar", "post"),
-        ("/api/ilanlar/{id}", "get"), ("/api/ilanlar/{id}", "put"), ("/api/ilanlar/{id}", "delete"), ("/api/kategoriler", "get") })
+        ("/api/ilanlar/{id}", "get"), ("/api/ilanlar/{id}", "put"), ("/api/ilanlar/{id}", "delete"),
+        ("/api/ilanlar/{id}/katilim", "put"), ("/api/ilanlar/{id}/katilim", "delete"),
+        ("/api/kategoriler", "get") })
         Require(openapi.GetProperty("paths").GetProperty(path).GetProperty(method)
             .GetProperty("security")[0].TryGetProperty("Bearer", out _), "Swagger Bearer şeması eksik.");
-    Console.WriteLine("PASS: çalışan Swagger/OpenAPI ve altı korunan işlem.");
+    Console.WriteLine("PASS: çalışan Swagger/OpenAPI ve sekiz korunan işlem.");
     var first = await Login(1); firstToken = first.Token;
     var second = await Login(2); secondToken = second.Token;
     Require(first.Id != second.Id, "İki farklı hesap girilmelidir.");
@@ -114,6 +122,24 @@ try
         Require(updated.GetProperty("baslik").GetString() == body["baslik"]!.ToString(), "Güncelleme hatalı.");
         var readBack = await Send(HttpMethod.Get, path, HttpStatusCode.OK, firstToken);
         Require(readBack.GetProperty("baslik").GetString() == body["baslik"]!.ToString(), "Güncelleme kalıcı değil.");
+        var participation = path + "/katilim";
+        if (type == "Sosyal")
+        {
+            await Send(HttpMethod.Put, participation, HttpStatusCode.Unauthorized);
+            for (var attempt = 0; attempt < 2; attempt++)
+                RequireParticipation(await Send(HttpMethod.Put, participation, HttpStatusCode.OK, secondToken), 1, true);
+
+            RequireParticipation(await Send(HttpMethod.Get, path, HttpStatusCode.OK, firstToken), 1, false);
+            RequireParticipation(await Send(HttpMethod.Delete, participation, HttpStatusCode.OK, firstToken), 1, false);
+            for (var attempt = 0; attempt < 2; attempt++)
+                RequireParticipation(await Send(HttpMethod.Delete, participation, HttpStatusCode.OK, secondToken), 0, false);
+            RequireParticipation(await Send(HttpMethod.Get, path, HttpStatusCode.OK, secondToken), 0, false);
+            Console.WriteLine("PASS: gerçek oturumlarla katılma, çift katılım engeli, hesap ayrımı ve geri alma.");
+        }
+        else
+        {
+            await Send(HttpMethod.Put, participation, HttpStatusCode.Conflict, secondToken);
+        }
         await Send(HttpMethod.Delete, path, HttpStatusCode.NoContent, firstToken);
         createdIds.Remove(id);
         await Send(HttpMethod.Get, path, HttpStatusCode.NotFound, firstToken);
