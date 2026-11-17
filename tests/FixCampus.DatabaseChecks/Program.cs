@@ -311,6 +311,7 @@ Console.WriteLine("PASS: katılımcı listesi, ilan sahibi yetkisi ve katılım 
 
 await MyListingsDatabaseChecks.RunAsync(db, userId, otherId, CancellationToken.None);
 await ExpiryDatabaseChecks.RunAsync(db, userId);
+await ParticipationWebDatabaseChecks.RunAsync(db, userId, otherId, CancellationToken.None);
 await ListingSearchDatabaseChecks.RunAsync(db, userId, otherId, Listings(userId), socialCategory);
 
 db.Katilimlar.Add(new Katilim { IlanId = saved.Id, ProfilId = otherId });

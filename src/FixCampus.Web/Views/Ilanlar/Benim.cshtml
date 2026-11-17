@@ -155,13 +155,26 @@
                                 </td>
                                 <td>
                                     <div class="small fw-medium text-dark"><i class="bi bi-tag me-1 text-secondary"></i>@item.KategoriAd</div>
-                                    <div class="text-muted small"><i class="bi bi-geo-alt me-1 text-danger"></i>@item.Yer</div>
+                                    <div class="text-muted small">
+                                        <i class="bi bi-geo-alt me-1 text-danger"></i>@item.Yer
+                                        @if (item.HaritaUrl is string haritaUrl)
+                                        {
+                                            <a href="@haritaUrl" target="_blank" rel="noopener noreferrer" class="link-primary ms-1">Haritada gör</a>
+                                        }
+                                    </div>
                                 </td>
                                 <td>
                                     @if (item.Tur == "Sosyal" && item.BulusmaTarihi.HasValue)
                                     {
-                                        <div class="small fw-semibold text-primary"><i class="bi bi-clock me-1"></i>@item.BulusmaTarihi.Value.ToString("dd.MM.yyyy HH:mm")</div>
-                                        <div class="text-muted small" style="font-size: 0.75rem;">Buluşma Zamanı</div>
+                                        <div class="small fw-semibold text-primary"><i class="bi bi-clock me-1"></i>@item.BulusmaTarihi.Value.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</div>
+                                        @if (item.IsExpired)
+                                        {
+                                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle mt-1" style="font-size: 0.7rem;">Süresi Doldu (Akışta Gizli)</span>
+                                        }
+                                        else
+                                        {
+                                            <div class="text-muted small" style="font-size: 0.75rem;">Buluşma Zamanı &bull; @item.KatilimciSayisi Katılımcı</div>
+                                        }
                                     }
                                     else
                                     {

@@ -65,6 +65,8 @@ public sealed record ListingSummaryResponse(
 {
     public int KatilimciSayisi => KatilimSayisi;
     public string? HaritaUrl => ListingMapLink.SearchUrl(Yer);
+    public bool IsJoined { get; init; }
+    public bool IsExpired { get; init; }
 }
 
 public sealed record ListingDetailResponse(
@@ -87,7 +89,20 @@ public sealed record ListingDetailResponse(
 )
 {
     public int KatilimciSayisi => KatilimSayisi;
+    public string? HaritaUrl => ListingMapLink.SearchUrl(Yer);
+    public bool IsJoined { get; init; }
+    public bool IsExpired { get; init; }
+    public IReadOnlyList<ParticipantResponse> Katilimcilar { get; init; } = [];
 }
+
+public sealed record ParticipationOperationResult(
+    bool Success,
+    string? ErrorMessage = null,
+    bool IsNotFound = false,
+    bool IsConflict = false,
+    bool IsJoined = false,
+    int ParticipantCount = 0
+);
 
 public sealed record PagedListingsResponse(
     IReadOnlyList<ListingSummaryResponse> Items,

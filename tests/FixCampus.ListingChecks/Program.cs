@@ -319,6 +319,150 @@ Require(!hiddenInSearch, "Gizlilik: Gizli ilanlar arama ve listelerde asla dönd
 
 Console.WriteLine("PASS: Tüm Hafta 4 kontrolleri (Arama, Kategori, Sayfalama, İlanlarım, Çift Hesap İzolasyonu ve Sahiplik) başarıyla doğrulandı.");
 
+// =========================================================================
+// 6. Hafta 5 — Buluşma Formu (Yer, Tarih, Saat), Geliyorum / Katılımı Geri Alma,
+//    Tekrar Katılımı Önleme ve İlan Sahibine Katılımcı Listesi Kontrolleri
+// =========================================================================
+var futureLocal = now.AddDays(2).ToLocalTime().DateTime;
+var splitDateFormVm = new ListingFormViewModel
+{
+    Baslik = "Algoritma Soru Çözüm Buluşması",
+    Aciklama = "Vize öncesi kütüphanede soru çözümü.",
+    Tur = "Sosyal",
+    KategoriId = validCategoryId,
+    Yer = "Merkez Kütüphane 2. Kat Çalışma Salonu",
+    BulusmaTarihiGun = futureLocal.Date,
+    BulusmaSaati = new TimeSpan(15, 30, 0)
+};
+Require(
+    ValidateViewModel(splitDateFormVm).Count == 0 &&
+    splitDateFormVm.GetEffectiveBulusmaZamani() == futureLocal.Date.AddHours(15).AddMinutes(30),
+    "Hafta 5: Ayrı girilen BulusmaTarihiGun ve BulusmaSaati alanları doğru birleştirilmeli ve doğrulanmalıdır.");
+
+var missingTimeFormVm = new ListingFormViewModel
+{
+    Baslik = "Algoritma Soru Çözüm Buluşması",
+    Aciklama = "Vize öncesi kütüphanede soru çözümü.",
+    Tur = "Sosyal",
+    KategoriId = validCategoryId,
+    Yer = "Merkez Kütüphane 2. Kat Çalışma Salonu",
+    BulusmaTarihiGun = futureLocal.Date,
+    BulusmaSaati = null
+};
+Require(
+    ValidateViewModel(missingTimeFormVm).Any(r => r.MemberNames.Contains(nameof(ListingFormViewModel.BulusmaZamani))),
+    "Hafta 5: Sosyal buluşmada saat seçilmediğinde doğrulama hatası verilmelidir.");
+
+var pastSplitFormVm = new ListingFormViewModel
+{
+    Baslik = "Geçmiş Buluşma",
+    Aciklama = "Açıklama",
+    Tur = "Sosyal",
+    KategoriId = validCategoryId,
+    Yer = "Kütüphane",
+    BulusmaTarihiGun = now.AddDays(-1).ToLocalTime().Date,
+    BulusmaSaati = new TimeSpan(10, 0, 0)
+};
+Require(
+    ValidateViewModel(pastSplitFormVm).Any(r => r.MemberNames.Contains(nameof(ListingFormViewModel.BulusmaZamani))),
+    "Hafta 5: Geçmiş tarih ve saat seçilen buluşma formu reddedilmelidir.");
+
+var clearedDateEditVm = new ListingEditViewModel
+{
+    Id = Guid.NewGuid(),
+    Baslik = "Düzenlenen Buluşma",
+    Aciklama = "Açıklama",
+    Tur = "Sosyal",
+    KategoriId = validCategoryId,
+    Yer = "Kütüphane",
+    BulusmaTarihiGun = null,
+    BulusmaSaati = new TimeSpan(14, 0, 0),
+    BulusmaZamani = futureLocal
+};
+Require(
+    clearedDateEditVm.GetEffectiveBulusmaZamani() is null &&
+    ValidateViewModel(clearedDateEditVm).Any(r => r.MemberNames.Contains(nameof(ListingFormViewModel.BulusmaZamani))),
+    "Hafta 5: Düzenleme formunda tarih temizlendiğinde gizli BulusmaZamani değerine düşülmemelidir.");
+
+var detailWithMap = new ListingDetailResponse(
+    Guid.NewGuid(), student1Id, "Berke", validCategoryId, "Çalışma", "Algoritma", "Detay", "Sosyal",
+    mapPlace, futureDate, "Aktif", now, 1, [], true, true);
+Require(detailWithMap.HaritaUrl == expectedMap, "Hafta 5: Detay ekranında da aynı Google Maps bağlantısı üretilmelidir.");
+
+// 6b. Geliyorum, Tekrar Katılımı Önleme ve Katılımı Geri Alma (Web Controller + Servis Akışı)
+var activeMeetup = demoListings.First(x => x.Tur == "Sosyal" && x.Durum == "Aktif");
+var participantsSet = new HashSet<Guid>();
+var participationProbe = DispatchProxy.Create<IListingService, ParticipationServiceProbe>();
+var probeImpl = (ParticipationServiceProbe)(object)participationProbe;
+probeImpl.OnJoin = (listingId, uid) =>
+{
+    if (listingId != activeMeetup.Id)
+        return new ParticipationOperationResult(false, "Buluşma ilanı bulunamadı.", IsNotFound: true);
+    if (!participantsSet.Add(uid))
+        return new ParticipationOperationResult(false, "Bu buluşmaya zaten katılıyorsunuz.", IsConflict: true, IsJoined: true, ParticipantCount: participantsSet.Count);
+    return new ParticipationOperationResult(true, IsJoined: true, ParticipantCount: participantsSet.Count);
+};
+probeImpl.OnLeave = (listingId, uid) =>
+{
+    if (listingId != activeMeetup.Id)
+        return new ParticipationOperationResult(false, "Buluşma ilanı bulunamadı.", IsNotFound: true);
+    if (!participantsSet.Remove(uid))
+        return new ParticipationOperationResult(false, "Bu buluşmaya aktif bir katılımınız bulunmuyor.", IsJoined: false, ParticipantCount: participantsSet.Count);
+    return new ParticipationOperationResult(true, IsJoined: false, ParticipantCount: participantsSet.Count);
+};
+
+IlanlarController CreateParticipationController(Guid? uid)
+{
+    var httpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext
+    {
+        User = new System.Security.Claims.ClaimsPrincipal(
+            new System.Security.Claims.ClaimsIdentity(
+                uid.HasValue
+                    ? [new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, uid.Value.ToString())]
+                    : [],
+                "test"))
+    };
+    return new IlanlarController(participationProbe, NullLogger<IlanlarController>.Instance, clock)
+    {
+        ControllerContext = new Microsoft.AspNetCore.Mvc.ControllerContext { HttpContext = httpContext },
+        TempData = new Microsoft.AspNetCore.Mvc.ViewFeatures.TempDataDictionary(
+            httpContext,
+            new InMemoryTempDataProvider())
+    };
+}
+
+Require(
+    await CreateParticipationController(null).Katil(activeMeetup.Id) is Microsoft.AspNetCore.Mvc.ChallengeResult,
+    "Hafta 5: Oturumsuz kullanıcı katılım yapamamalıdır.");
+
+var joinController1 = CreateParticipationController(student2Id);
+var joinAction1 = await joinController1.Katil(activeMeetup.Id) as Microsoft.AspNetCore.Mvc.RedirectToActionResult;
+Require(
+    joinAction1 is { ActionName: "Detay" } &&
+    participantsSet.Contains(student2Id) &&
+    participantsSet.Count == 1 &&
+    joinController1.TempData["SuccessMessage"] is not null,
+    "Hafta 5: 'Geliyorum' işlemi katılımcıyı kaydetmeli ve Detay sayfasına yönlendirmelidir.");
+
+var duplicateJoinController = CreateParticipationController(student2Id);
+var duplicateJoinAction = await duplicateJoinController.Katil(activeMeetup.Id) as Microsoft.AspNetCore.Mvc.RedirectToActionResult;
+Require(
+    duplicateJoinAction is { ActionName: "Detay" } &&
+    participantsSet.Count == 1 &&
+    duplicateJoinController.TempData["ErrorMessage"]?.ToString()?.Contains("zaten katılıyorsunuz") == true,
+    "Hafta 5: Aynı kullanıcının aynı buluşmaya tekrar katılması önlenmelidir.");
+
+var leaveController = CreateParticipationController(student2Id);
+var leaveAction = await leaveController.Ayril(activeMeetup.Id) as Microsoft.AspNetCore.Mvc.RedirectToActionResult;
+Require(
+    leaveAction is { ActionName: "Detay" } &&
+    !participantsSet.Contains(student2Id) &&
+    participantsSet.Count == 0 &&
+    leaveController.TempData["SuccessMessage"] is not null,
+    "Hafta 5: 'Katılımı Geri Al' işlemi katılımı silmeli ve katılımcı sayısını düşürmelidir.");
+
+Console.WriteLine("PASS: Tüm Hafta 5 kontrolleri (Buluşma Yer/Tarih/Saat Formu, Geliyorum, Katılımı Geri Alma, Tekrar Katılım Engeli ve Harita Bağlantısı) başarıyla doğrulandı.");
+
 static void Require(bool condition, string message)
 {
     if (!condition)
@@ -333,5 +477,35 @@ static void Require(bool condition, string message)
 sealed class FixedClock(DateTimeOffset now) : TimeProvider
 {
     public override DateTimeOffset GetUtcNow() => now;
+}
+
+public class ParticipationServiceProbe : DispatchProxy
+{
+    public Func<Guid, Guid, ParticipationOperationResult> OnJoin { get; set; } = null!;
+    public Func<Guid, Guid, ParticipationOperationResult> OnLeave { get; set; } = null!;
+
+    protected override object? Invoke(MethodInfo? targetMethod, object?[]? args) => targetMethod?.Name switch
+    {
+        nameof(IListingService.JoinListingAsync) => Task.FromResult(OnJoin((Guid)args![0]!, (Guid)args[1]!)),
+        nameof(IListingService.LeaveListingAsync) => Task.FromResult(OnLeave((Guid)args![0]!, (Guid)args[1]!)),
+        _ => throw new NotSupportedException(targetMethod?.Name)
+    };
+}
+
+sealed class InMemoryTempDataProvider : Microsoft.AspNetCore.Mvc.ViewFeatures.ITempDataProvider
+{
+    private readonly Dictionary<string, object?> _data = new(StringComparer.OrdinalIgnoreCase);
+
+    public IDictionary<string, object?> LoadTempData(Microsoft.AspNetCore.Http.HttpContext context) =>
+        new Dictionary<string, object?>(_data, StringComparer.OrdinalIgnoreCase);
+
+    public void SaveTempData(Microsoft.AspNetCore.Http.HttpContext context, IDictionary<string, object?> values)
+    {
+        _data.Clear();
+        foreach (var kv in values)
+        {
+            _data[kv.Key] = kv.Value;
+        }
+    }
 }
 

@@ -206,3 +206,31 @@ fixCampus platformunda ilan keşif deneyimi ve kişisel ilan yönetimi tamamlanm
 dotnet run --project tests/FixCampus.ListingChecks
 ```
 
+---
+
+## 🚀 Hafta 5 — Buluşmalara Yer, Tarih ve Saat Ekleme, Katılım İşlemleri ve Süre Kuralı (Berke Mahmut Acar)
+
+Sosyal Radar buluşmaları için yer/tarih/saat formu, "Geliyorum" ve "Katılımı Geri Al" işlemleri, mükerrer katılım engeli ve süresi dolan sosyal buluşmaların ortak akıştan gizlenmesi tamamlandı.
+
+### Eklenen Yetenekler & Görev Dağılımı
+
+1. **Buluşma Formu & Web Arayüzü (Berke Mahmut Acar):**
+   - `Views/Ilanlar/Yeni.cshtml` & `Duzenle.cshtml`: Hızlı kampüs konumu seçicileri ve ayrı **Buluşma Tarihi** / **Buluşma Saati** alanları (geçmiş tarih korumalı, geriye uyumlu model bağlama).
+   - `Views/Ilanlar/Detay.cshtml` & `IlanlarController`: **Geliyorum** (`POST /Ilanlar/Katil/{id}`) ve **Katılımı Geri Al** (`POST /Ilanlar/Ayril/{id}`) akışları, kartlarda **Katılıyorsun** rozeti, konumlarda Google Maps **Haritada gör** linki ve yalnızca ilan sahibine katılımcı listesi görünümü.
+   - `Views/Home/Index.cshtml`, `Radar.cshtml`, `LostFound.cshtml`: İlan verme kısayolları doğrudan `/Ilanlar/Yeni` sayfasına bağlandı.
+2. **Katılım REST API, Harita Linki & Android Testleri (Berna Kalkan):**
+   - `PUT /api/ilanlar/{id}/katilim` ve `DELETE /api/ilanlar/{id}/katilim`: Transaction ve `FOR SHARE` satır kilidi ile idempotent/çakışmasız katılım ve geri alma (`ListingResponse` üzerinde `katilimciSayisi` ve `katiliyor`).
+   - `GET /api/ilanlar/{id}/katilimcilar`: Yalnızca ilan sahibine katılımcı profilleri (`AdSoyad`, `Bolum`, `Sinif`); sahip dışında `403 Forbidden`.
+   - `ListingMapLink` (`haritaUrl`), geliştirme ortamı için `LocalFlutterCors` ve Pixel 7 Android emülatörü canlı kullanıcı testi ([Hafta 5 Android testi](docs/hafta-05-android-canli-test.md)).
+3. **Süre Kuralı (Zülfikar Durak):**
+   - `ListingQueries.Filter` (`visibleAtUtc`): Süresi dolmuş (`BulusmaTarihi <= now`) veya tarihsiz Sosyal buluşmalar ortak akıştan (`GET /api/ilanlar`, `GET /api/ilanlar/sayfali`, `/Ilanlar`) filtrelenir; veritabanı kaydı ve sahibinin `/Ilanlar/Benim` görünümü korunur.
+
+### Hafta 5 Testlerini Çalıştırma
+
+```powershell
+dotnet run --project tests/FixCampus.ListingChecks
+dotnet run --project tests/FixCampus.AuthChecks
+dotnet run --project tests/FixCampus.AuthorizationChecks
+dotnet run --project tests/FixCampus.DatabaseChecks -- --model-only
+```
+

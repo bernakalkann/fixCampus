@@ -1,0 +1,61 @@
+<script>
+    (function () {
+        function syncMeetingForm() {
+            const dateInput = document.getElementById('bulusmaZamaniInput');
+            const dayInput = document.getElementById('bulusmaTarihInput');
+            const timeInput = document.getElementById('bulusmaSaatInput');
+            const yerInput = document.getElementById('yerInput');
+            const meetingError = document.querySelector('[data-valmsg-for="BulusmaZamani"]');
+
+            function updateValidationMessage() {
+                if (!meetingError) return;
+                if (dayInput && timeInput && dayInput.value && timeInput.value) {
+                    const selected = new Date(`${dayInput.value}T${timeInput.value}`);
+                    if (!Number.isNaN(selected.getTime()) && selected.getTime() <= Date.now()) {
+                        meetingError.textContent = 'Buluşma tarihi gelecekte olmalıdır.';
+                        meetingError.classList.remove('field-validation-valid');
+                        meetingError.classList.add('field-validation-error');
+                        return;
+                    }
+                }
+                meetingError.textContent = '';
+                meetingError.classList.remove('field-validation-error');
+                meetingError.classList.add('field-validation-valid');
+            }
+
+            window.fixCampusSyncMeetingDate = function () {
+                if (!dateInput) return;
+                if (dayInput && timeInput && dayInput.value && timeInput.value) {
+                    dateInput.value = `${dayInput.value}T${timeInput.value}`;
+                } else {
+                    dateInput.value = '';
+                }
+                updateValidationMessage();
+            };
+
+            if (dayInput) {
+                dayInput.addEventListener('change', window.fixCampusSyncMeetingDate);
+                dayInput.addEventListener('input', window.fixCampusSyncMeetingDate);
+            }
+            if (timeInput) {
+                timeInput.addEventListener('change', window.fixCampusSyncMeetingDate);
+                timeInput.addEventListener('input', window.fixCampusSyncMeetingDate);
+            }
+
+            document.querySelectorAll('.quick-loc-btn').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    if (yerInput) {
+                        yerInput.value = this.getAttribute('data-loc') || '';
+                        yerInput.focus();
+                    }
+                });
+            });
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', syncMeetingForm);
+        } else {
+            syncMeetingForm();
+        }
+    })();
+</script>

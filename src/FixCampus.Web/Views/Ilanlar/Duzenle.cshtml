@@ -53,19 +53,44 @@
                         </div>
 
                         <div class="row g-3 mb-3">
-                            <div class="col-md-@(Model.Tur == "Sosyal" ? "6" : "12")">
+                            <div class="col-md-12">
                                 <label asp-for="Yer" class="form-label fw-semibold small">Kampüs İçi Konum / Yer <span class="text-danger">*</span></label>
-                                <input asp-for="Yer" class="form-control" maxlength="200" />
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light"><i class="bi bi-geo-alt"></i></span>
+                                    <input asp-for="Yer" id="yerInput" class="form-control" maxlength="200" />
+                                </div>
+                                <div class="d-flex flex-wrap align-items-center gap-1 mt-2">
+                                    <span class="text-muted small me-1">Hızlı Konum:</span>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2 rounded-pill small quick-loc-btn" data-loc="Merkez Kütüphane 2. Kat Çalışma Salonu">Kütüphane 2. Kat</button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2 rounded-pill small quick-loc-btn" data-loc="Mühendislik Fakültesi D-Blok Kantini">Mühendislik Kantini</button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2 rounded-pill small quick-loc-btn" data-loc="Kampüs Spor Tesisleri Halı Saha">Spor Tesisleri</button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2 rounded-pill small quick-loc-btn" data-loc="Gölbaşı Öğrenci Kafeteryası">Öğrenci Kafeteryası</button>
+                                </div>
                                 <span asp-validation-for="Yer" class="text-danger small"></span>
                             </div>
 
                             @if (Model.Tur == "Sosyal")
                             {
-                                <div class="col-md-6">
-                                    <label asp-for="BulusmaZamani" class="form-label fw-semibold small">Buluşma Tarihi & Saati <span class="text-danger">*</span></label>
-                                    <input asp-for="BulusmaZamani" type="datetime-local" class="form-control" value="@(Model.BulusmaZamani?.ToString("yyyy-MM-ddTHH:mm"))" />
-                                    <div class="form-text small">Sosyal buluşma tarihi gelecek bir zaman olmalıdır.</div>
-                                    <span asp-validation-for="BulusmaZamani" class="text-danger small"></span>
+                                <div class="col-md-12">
+                                    <div class="p-3 rounded-3 bg-light border">
+                                        <div class="row g-3">
+                                            <div class="col-md-6">
+                                                <label asp-for="BulusmaTarihiGun" class="form-label fw-semibold small">
+                                                    <i class="bi bi-calendar-event me-1 text-primary"></i>Buluşma Tarihi <span class="text-danger">*</span>
+                                                </label>
+                                                <input asp-for="BulusmaTarihiGun" type="date" id="bulusmaTarihInput" class="form-control" value="@((Model.BulusmaTarihiGun ?? Model.BulusmaZamani?.Date)?.ToString("yyyy-MM-dd"))" />
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label asp-for="BulusmaSaati" class="form-label fw-semibold small">
+                                                    <i class="bi bi-clock me-1 text-primary"></i>Buluşma Saati <span class="text-danger">*</span>
+                                                </label>
+                                                <input asp-for="BulusmaSaati" type="time" id="bulusmaSaatInput" class="form-control" value="@((Model.BulusmaSaati ?? Model.BulusmaZamani?.TimeOfDay)?.ToString(@"hh\:mm"))" />
+                                            </div>
+                                        </div>
+                                        <input asp-for="BulusmaZamani" type="hidden" id="bulusmaZamaniInput" value="@(Model.BulusmaZamani?.ToString("yyyy-MM-ddTHH:mm"))" />
+                                        <div class="form-text small mt-2">Sosyal buluşma tarihi gelecek bir zaman olmalıdır.</div>
+                                        <span asp-validation-for="BulusmaZamani" class="text-danger small d-block"></span>
+                                    </div>
                                 </div>
                             }
                         </div>
@@ -91,4 +116,5 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <partial name="_MeetingFormScriptsPartial" />
 }

@@ -60,7 +60,28 @@ public class ListingFormViewModel : IValidatableObject
     [Display(Name = "Buluşma Tarihi ve Saati")]
     public DateTime? BulusmaZamani { get; set; }
 
+    [Display(Name = "Buluşma Tarihi")]
+    public DateTime? BulusmaTarihiGun { get; set; }
+
+    [Display(Name = "Buluşma Saati")]
+    public TimeSpan? BulusmaSaati { get; set; }
+
     public IReadOnlyList<CategoryDto> Categories { get; set; } = [];
+
+    public DateTime? GetEffectiveBulusmaZamani()
+    {
+        if (BulusmaTarihiGun.HasValue && BulusmaSaati.HasValue)
+        {
+            return BulusmaTarihiGun.Value.Date.Add(BulusmaSaati.Value);
+        }
+
+        if (BulusmaTarihiGun.HasValue || BulusmaSaati.HasValue)
+        {
+            return null;
+        }
+
+        return BulusmaZamani;
+    }
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
@@ -92,15 +113,16 @@ public class ListingFormViewModel : IValidatableObject
         }
 
         var clock = validationContext.GetService<TimeProvider>() ?? TimeProvider.System;
+        var effectiveMeetingTime = GetEffectiveBulusmaZamani();
         if (trimmedType == "Sosyal")
         {
-            if (BulusmaZamani is null)
+            if (effectiveMeetingTime is null)
             {
-                yield return new ValidationResult("Sosyal ilanlarda buluşma tarihi zorunludur.", [nameof(BulusmaZamani)]);
+                yield return new ValidationResult("Sosyal ilanlarda buluşma tarihi ve saati zorunludur.", [nameof(BulusmaZamani)]);
             }
             else
             {
-                var localDate = DateTime.SpecifyKind(BulusmaZamani.Value, DateTimeKind.Local);
+                var localDate = DateTime.SpecifyKind(effectiveMeetingTime.Value, DateTimeKind.Local);
                 var dto = new DateTimeOffset(localDate).ToUniversalTime();
                 if (dto <= clock.GetUtcNow())
                 {
@@ -108,7 +130,7 @@ public class ListingFormViewModel : IValidatableObject
                 }
             }
         }
-        else if (BulusmaZamani is not null)
+        else if (effectiveMeetingTime is not null || BulusmaTarihiGun is not null || BulusmaSaati is not null)
         {
             yield return new ValidationResult("Kayıp ve buluntu ilanlarında buluşma tarihi boş olmalıdır.", [nameof(BulusmaZamani)]);
         }

@@ -29,7 +29,7 @@ public sealed class IlanlarController(
     {
         try
         {
-            var paged = await listingService.GetListingsAsync(tur, kategoriId, q, sayfa, 12, ct);
+            var paged = await listingService.GetListingsAsync(tur, kategoriId, q, sayfa, 12, GetCurrentUserId(), ct);
             var categories = await listingService.GetCategoriesAsync(tur, ct);
 
             var vm = new ListingListViewModel
@@ -127,14 +127,17 @@ public sealed class IlanlarController(
         var selectedTur = tur is "Sosyal" or "Kayip" or "Buluntu" ? tur : "Sosyal";
         var categories = await SafeGetCategoriesAsync(null, ct);
         var defaultCat = categories.FirstOrDefault(c => c.Tur == selectedTur)?.Id ?? Guid.Empty;
+        var defaultMeeting = selectedTur == "Sosyal"
+            ? _clock.GetUtcNow().ToLocalTime().DateTime.AddDays(1).Date.AddHours(14)
+            : (DateTime?)null;
 
         var vm = new ListingFormViewModel
         {
             Tur = selectedTur,
             KategoriId = defaultCat,
-            BulusmaZamani = selectedTur == "Sosyal"
-                ? _clock.GetUtcNow().ToLocalTime().DateTime.AddDays(1).Date.AddHours(14)
-                : null,
+            BulusmaZamani = defaultMeeting,
+            BulusmaTarihiGun = defaultMeeting?.Date,
+            BulusmaSaati = defaultMeeting?.TimeOfDay,
             Categories = categories
         };
 
@@ -205,6 +208,7 @@ public sealed class IlanlarController(
         }
 
         var categories = await SafeGetCategoriesAsync(null, ct);
+        var localMeeting = listing.BulusmaTarihi?.ToLocalTime().DateTime;
         var vm = new ListingEditViewModel
         {
             Id = listing.Id,
@@ -213,7 +217,9 @@ public sealed class IlanlarController(
             Tur = listing.Tur,
             KategoriId = listing.KategoriId,
             Yer = listing.Yer,
-            BulusmaZamani = listing.BulusmaTarihi?.ToLocalTime().DateTime,
+            BulusmaZamani = localMeeting,
+            BulusmaTarihiGun = localMeeting?.Date,
+            BulusmaSaati = localMeeting?.TimeOfDay,
             Categories = categories
         };
 
@@ -319,6 +325,63 @@ public sealed class IlanlarController(
         return RedirectToAction(nameof(Benim));
     }
 
+    // POST: /Ilanlar/Katil/{id}
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Katil(Guid id, CancellationToken ct = default)
+    {
+        var userId = GetCurrentUserId();
+        if (!userId.HasValue || userId.Value == Guid.Empty)
+        {
+            return Challenge();
+        }
+
+        var userName = User.Identity?.Name ?? "Kampüs Öğrencisi";
+        var userEmail = User.FindFirstValue(ClaimTypes.Email) ?? "ogrenci@ankara.edu.tr";
+
+        var result = await listingService.JoinListingAsync(id, userId.Value, userName, userEmail, ct);
+        if (result.IsNotFound)
+        {
+            return NotFound();
+        }
+
+        if (!result.Success)
+        {
+            TempData["ErrorMessage"] = result.ErrorMessage ?? "Buluşmaya katılım işlemi tamamlanamadı.";
+            return RedirectToAction(nameof(Detay), new { id });
+        }
+
+        TempData["SuccessMessage"] = "Buluşmaya katılımınız ('Geliyorum') kaydedildi!";
+        return RedirectToAction(nameof(Detay), new { id });
+    }
+
+    // POST: /Ilanlar/Ayril/{id}
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Ayril(Guid id, CancellationToken ct = default)
+    {
+        var userId = GetCurrentUserId();
+        if (!userId.HasValue || userId.Value == Guid.Empty)
+        {
+            return Challenge();
+        }
+
+        var result = await listingService.LeaveListingAsync(id, userId.Value, ct);
+        if (result.IsNotFound)
+        {
+            return NotFound();
+        }
+
+        if (!result.Success)
+        {
+            TempData["ErrorMessage"] = result.ErrorMessage ?? "Katılım geri alınamadı.";
+            return RedirectToAction(nameof(Detay), new { id });
+        }
+
+        TempData["SuccessMessage"] = "Buluşma katılımınız geri alındı.";
+        return RedirectToAction(nameof(Detay), new { id });
+    }
+
     // GET: /Ilanlar/Kategoriler?tur=Sosyal
     [HttpGet]
     public async Task<IActionResult> Kategoriler([FromQuery] string? tur = null, CancellationToken ct = default)
@@ -330,6 +393,14 @@ public sealed class IlanlarController(
     private DateTimeOffset? ValidateAndConvertMeetingDate(ListingFormViewModel model)
     {
         var trimmedTur = model.Tur?.Trim() ?? string.Empty;
+        var effectiveMeeting = model.GetEffectiveBulusmaZamani();
+        model.BulusmaZamani = effectiveMeeting;
+        if (effectiveMeeting.HasValue)
+        {
+            model.BulusmaTarihiGun ??= effectiveMeeting.Value.Date;
+            model.BulusmaSaati ??= effectiveMeeting.Value.TimeOfDay;
+        }
+
         var hasExistingError = ModelState.TryGetValue(nameof(model.BulusmaZamani), out var entry) && entry.Errors.Count > 0;
 
         if (trimmedTur == "Sosyal")
@@ -338,7 +409,7 @@ public sealed class IlanlarController(
             {
                 if (!hasExistingError)
                 {
-                    ModelState.AddModelError(nameof(model.BulusmaZamani), "Sosyal ilanlarda buluşma tarihi zorunludur.");
+                    ModelState.AddModelError(nameof(model.BulusmaZamani), "Sosyal ilanlarda buluşma tarihi ve saati zorunludur.");
                 }
                 return null;
             }

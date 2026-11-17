@@ -18,12 +18,16 @@ public sealed record ListingOperationResult(
 public interface IListingService
 {
     Task<PagedListingsResponse> GetListingsAsync(string? tur, Guid? kategoriId, string? arama, int sayfa, int sayfaBoyutu, CancellationToken ct = default);
+    Task<PagedListingsResponse> GetListingsAsync(string? tur, Guid? kategoriId, string? arama, int sayfa, int sayfaBoyutu, Guid? currentUserId, CancellationToken ct = default)
+        => GetListingsAsync(tur, kategoriId, arama, sayfa, sayfaBoyutu, ct);
     Task<ListingDetailResponse?> GetListingByIdAsync(Guid id, Guid? currentUserId, bool isAdmin, CancellationToken ct = default);
     Task<IReadOnlyList<ListingSummaryResponse>> GetUserListingsAsync(Guid userId, string? tur = null, CancellationToken ct = default);
     Task<IReadOnlyList<CategoryDto>> GetCategoriesAsync(string? tur = null, CancellationToken ct = default);
     Task<ListingOperationResult> CreateListingAsync(CreateListingRequest request, Guid userId, string userDisplayName, string userEmail, CancellationToken ct = default);
     Task<ListingOperationResult> UpdateListingAsync(Guid id, UpdateListingRequest request, Guid currentUserId, bool isAdmin, CancellationToken ct = default);
     Task<ListingOperationResult> DeleteListingAsync(Guid id, Guid currentUserId, bool isAdmin, CancellationToken ct = default);
+    Task<ParticipationOperationResult> JoinListingAsync(Guid listingId, Guid userId, string userDisplayName = "Kampüs Öğrencisi", string userEmail = "ogrenci@ankara.edu.tr", CancellationToken ct = default);
+    Task<ParticipationOperationResult> LeaveListingAsync(Guid listingId, Guid userId, CancellationToken ct = default);
 }
 
 public sealed class ListingService(
@@ -51,12 +55,22 @@ public sealed class ListingService(
             .ToListAsync(ct);
     }
 
+    public Task<PagedListingsResponse> GetListingsAsync(
+        string? tur,
+        Guid? kategoriId,
+        string? arama,
+        int sayfa,
+        int sayfaBoyutu,
+        CancellationToken ct = default) =>
+        GetListingsAsync(tur, kategoriId, arama, sayfa, sayfaBoyutu, currentUserId: null, ct);
+
     public async Task<PagedListingsResponse> GetListingsAsync(
         string? tur,
         Guid? kategoriId,
         string? arama,
         int sayfa,
         int sayfaBoyutu,
+        Guid? currentUserId,
         CancellationToken ct = default)
     {
         (sayfa, sayfaBoyutu) = ListingQueries.Normalize(sayfa, sayfaBoyutu);
@@ -64,6 +78,7 @@ public sealed class ListingService(
 
         var totalCount = await query.CountAsync(ct);
         var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)sayfaBoyutu));
+        var userId = currentUserId ?? Guid.Empty;
 
         var items = await ListingQueries.Page(query, sayfa, sayfaBoyutu)
             .Select(i => new ListingSummaryResponse(
@@ -81,7 +96,10 @@ public sealed class ListingService(
                 i.OlusturulmaTarihi,
                 i.Katilimlar.Count,
                 i.Fotograflar.OrderBy(f => f.YuklemeTarihi).Select(f => f.DosyaYolu).FirstOrDefault()
-            ))
+            )
+            {
+                IsJoined = userId != Guid.Empty && i.Katilimlar.Any(k => k.ProfilId == userId)
+            })
             .ToListAsync(ct);
 
         return new PagedListingsResponse(items, totalCount, sayfa, sayfaBoyutu, totalPages);
@@ -98,6 +116,7 @@ public sealed class ListingService(
             .Include(i => i.Sahip)
             .Include(i => i.Kategori)
             .Include(i => i.Katilimlar)
+                .ThenInclude(k => k.Profil)
             .Include(i => i.Fotograflar.OrderBy(f => f.YuklemeTarihi))
             .Where(i => i.Id == id && i.Durum != "Gizli")
             .FirstOrDefaultAsync(ct);
@@ -108,6 +127,22 @@ public sealed class ListingService(
         }
 
         var isOwner = currentUserId.HasValue && ilan.SahipId == currentUserId.Value;
+        var now = _clock.GetUtcNow();
+        var isExpired = ilan.Tur == "Sosyal" && (!ilan.BulusmaTarihi.HasValue || ilan.BulusmaTarihi.Value <= now);
+        var isJoined = currentUserId.HasValue && ilan.Katilimlar.Any(k => k.ProfilId == currentUserId.Value);
+
+        // Berna'nın GET /api/ilanlar/{id}/katilimcilar kuralıyla uyumlu olarak
+        // katılımcı ad-soyad, bölüm ve sınıf bilgisi yalnızca ilan sahibine gösterilir.
+        IReadOnlyList<ParticipantResponse> participants = isOwner
+            ? ilan.Katilimlar
+                .OrderBy(k => k.KatilimTarihi)
+                .ThenBy(k => k.Id)
+                .Select(k => new ParticipantResponse(
+                    k.Profil?.AdSoyad ?? "Kampüs Öğrencisi",
+                    k.Profil?.Bolum,
+                    k.Profil?.Sinif))
+                .ToList()
+            : [];
 
         return new ListingDetailResponse(
             ilan.Id,
@@ -126,11 +161,17 @@ public sealed class ListingService(
             ilan.Fotograflar.OrderBy(f => f.YuklemeTarihi).Select(f => f.DosyaYolu).ToList(),
             IsOwner: isOwner,
             CanManage: isOwner
-        );
+        )
+        {
+            IsJoined = isJoined,
+            IsExpired = isExpired,
+            Katilimcilar = participants
+        };
     }
 
     public async Task<IReadOnlyList<ListingSummaryResponse>> GetUserListingsAsync(Guid userId, string? tur = null, CancellationToken ct = default)
     {
+        var now = _clock.GetUtcNow();
         var query = db.Ilanlar
             .AsNoTracking()
             .Include(i => i.Sahip)
@@ -163,7 +204,11 @@ public sealed class ListingService(
                 i.OlusturulmaTarihi,
                 i.Katilimlar.Count,
                 i.Fotograflar.OrderBy(f => f.YuklemeTarihi).Select(f => f.DosyaYolu).FirstOrDefault()
-            ))
+            )
+            {
+                IsExpired = i.Tur == "Sosyal" && (i.BulusmaTarihi == null || i.BulusmaTarihi <= now),
+                IsJoined = i.Katilimlar.Any(k => k.ProfilId == userId)
+            })
             .ToListAsync(ct);
     }
 
@@ -199,40 +244,7 @@ public sealed class ListingService(
 
         try
         {
-            if (!await db.Profiller.AnyAsync(p => p.Id == userId, ct))
-            {
-                var role = userEmail.Contains("admin", StringComparison.OrdinalIgnoreCase) || userDisplayName.Contains("Yönetici", StringComparison.OrdinalIgnoreCase)
-                    ? AppRoles.Administrator
-                    : AppRoles.Student;
-
-                var safeName = string.IsNullOrWhiteSpace(userDisplayName) ? "Kampüs Öğrencisi" : userDisplayName.Trim();
-                try
-                {
-                    if (db.Database.IsNpgsql())
-                    {
-                        await db.Database.ExecuteSqlInterpolatedAsync($"""
-                            INSERT INTO "Profiller" ("Id", "AdSoyad", "Rol", "OlusturulmaTarihi")
-                            VALUES ({userId}, {safeName}, {role}, {DateTimeOffset.UtcNow})
-                            ON CONFLICT ("Id") DO NOTHING
-                        """, ct);
-                    }
-                    else
-                    {
-                        db.Profiller.Add(new Profil
-                        {
-                            Id = userId,
-                            AdSoyad = safeName,
-                            Rol = role,
-                            OlusturulmaTarihi = _clock.GetUtcNow()
-                        });
-                        await db.SaveChangesAsync(ct);
-                    }
-                }
-                catch (Exception pEx)
-                {
-                    logger.LogWarning(pEx, "Profil otomatik oluşturulurken hata oluştu.");
-                }
-            }
+            await EnsureProfileExistsAsync(userId, userDisplayName, userEmail, ct);
 
             db.Ilanlar.Add(newListing);
             await db.SaveChangesAsync(ct);
@@ -330,6 +342,189 @@ public sealed class ListingService(
         {
             logger.LogError(ex, "İlan silinirken veritabanı hatası oluştu: {ListingId}", id);
             return new ListingOperationResult(false, "İlan veritabanından silinemedi. Lütfen tekrar deneyin.");
+        }
+    }
+
+    public async Task<ParticipationOperationResult> JoinListingAsync(
+        Guid listingId,
+        Guid userId,
+        string userDisplayName = "Kampüs Öğrencisi",
+        string userEmail = "ogrenci@ankara.edu.tr",
+        CancellationToken ct = default)
+    {
+        if (userId == Guid.Empty)
+        {
+            return new ParticipationOperationResult(false, "Geçerli bir kullanıcı oturumu gereklidir.");
+        }
+
+        try
+        {
+            var ilan = await db.Ilanlar
+                .AsNoTracking()
+                .Where(i => i.Id == listingId && i.Durum != "Gizli")
+                .FirstOrDefaultAsync(ct);
+
+            if (ilan is null)
+            {
+                return new ParticipationOperationResult(false, "Buluşma ilanı bulunamadı.", IsNotFound: true);
+            }
+
+            if (ilan.Tur != "Sosyal")
+            {
+                return new ParticipationOperationResult(false, "Yalnızca sosyal buluşma ilanlarına katılım sağlanabilir.");
+            }
+
+            if (ilan.Durum != "Aktif")
+            {
+                return new ParticipationOperationResult(false, "Bu buluşma ilanı artık aktif değil.");
+            }
+
+            if (!ilan.BulusmaTarihi.HasValue || ilan.BulusmaTarihi.Value <= _clock.GetUtcNow())
+            {
+                return new ParticipationOperationResult(false, "Süresi geçmiş buluşmalara katılım sağlanamaz.");
+            }
+
+            if (await db.Katilimlar.AnyAsync(k => k.IlanId == listingId && k.ProfilId == userId, ct))
+            {
+                var currentCount = await db.Katilimlar.CountAsync(k => k.IlanId == listingId, ct);
+                return new ParticipationOperationResult(
+                    false,
+                    "Bu buluşmaya zaten katılıyorsunuz.",
+                    IsConflict: true,
+                    IsJoined: true,
+                    ParticipantCount: currentCount);
+            }
+
+            await EnsureProfileExistsAsync(userId, userDisplayName, userEmail, ct);
+
+            db.Katilimlar.Add(new Katilim
+            {
+                Id = Guid.NewGuid(),
+                IlanId = listingId,
+                ProfilId = userId,
+                KatilimTarihi = _clock.GetUtcNow()
+            });
+
+            await db.SaveChangesAsync(ct);
+
+            var updatedCount = await db.Katilimlar.CountAsync(k => k.IlanId == listingId, ct);
+            return new ParticipationOperationResult(true, IsJoined: true, ParticipantCount: updatedCount);
+        }
+        catch (DbUpdateException ex)
+        {
+            db.ChangeTracker.Clear();
+            if (await db.Katilimlar.AnyAsync(k => k.IlanId == listingId && k.ProfilId == userId, ct))
+            {
+                var currentCount = await db.Katilimlar.CountAsync(k => k.IlanId == listingId, ct);
+                return new ParticipationOperationResult(
+                    false,
+                    "Bu buluşmaya zaten katılıyorsunuz.",
+                    IsConflict: true,
+                    IsJoined: true,
+                    ParticipantCount: currentCount);
+            }
+
+            logger.LogError(ex, "Buluşmaya katılım kaydedilirken veritabanı hatası oluştu: {ListingId}", listingId);
+            return new ParticipationOperationResult(false, "Katılım işlemi kaydedilemedi. Lütfen tekrar deneyin.");
+        }
+        catch (Exception ex) when (ex is DbException or TimeoutException or InvalidOperationException)
+        {
+            logger.LogError(ex, "Buluşmaya katılım sırasında veritabanı hatası oluştu: {ListingId}", listingId);
+            return new ParticipationOperationResult(false, "Katılım işlemi kaydedilemedi. Lütfen bağlantınızı kontrol edin.");
+        }
+    }
+
+    public async Task<ParticipationOperationResult> LeaveListingAsync(
+        Guid listingId,
+        Guid userId,
+        CancellationToken ct = default)
+    {
+        if (userId == Guid.Empty)
+        {
+            return new ParticipationOperationResult(false, "Geçerli bir kullanıcı oturumu gereklidir.");
+        }
+
+        try
+        {
+            var ilan = await db.Ilanlar
+                .AsNoTracking()
+                .Where(i => i.Id == listingId && i.Durum != "Gizli")
+                .FirstOrDefaultAsync(ct);
+
+            if (ilan is null)
+            {
+                return new ParticipationOperationResult(false, "Buluşma ilanı bulunamadı.", IsNotFound: true);
+            }
+
+            if (ilan.Tur != "Sosyal")
+            {
+                return new ParticipationOperationResult(false, "Yalnızca sosyal buluşma ilanlarından ayrılabilirsiniz.");
+            }
+
+            var existing = await db.Katilimlar
+                .Where(k => k.IlanId == listingId && k.ProfilId == userId)
+                .FirstOrDefaultAsync(ct);
+
+            if (existing is null)
+            {
+                var currentCount = await db.Katilimlar.CountAsync(k => k.IlanId == listingId, ct);
+                return new ParticipationOperationResult(
+                    false,
+                    "Bu buluşmaya aktif bir katılımınız bulunmuyor.",
+                    IsJoined: false,
+                    ParticipantCount: currentCount);
+            }
+
+            db.Katilimlar.Remove(existing);
+            await db.SaveChangesAsync(ct);
+
+            var updatedCount = await db.Katilimlar.CountAsync(k => k.IlanId == listingId, ct);
+            return new ParticipationOperationResult(true, IsJoined: false, ParticipantCount: updatedCount);
+        }
+        catch (Exception ex) when (ex is DbException or DbUpdateException or TimeoutException or InvalidOperationException)
+        {
+            logger.LogError(ex, "Buluşmadan ayrılma sırasında veritabanı hatası oluştu: {ListingId}", listingId);
+            return new ParticipationOperationResult(false, "Katılım geri alınamadı. Lütfen tekrar deneyin.");
+        }
+    }
+
+    private async Task EnsureProfileExistsAsync(Guid userId, string userDisplayName, string userEmail, CancellationToken ct)
+    {
+        if (await db.Profiller.AnyAsync(p => p.Id == userId, ct))
+        {
+            return;
+        }
+
+        var role = userEmail.Contains("admin", StringComparison.OrdinalIgnoreCase) || userDisplayName.Contains("Yönetici", StringComparison.OrdinalIgnoreCase)
+            ? AppRoles.Administrator
+            : AppRoles.Student;
+
+        var safeName = string.IsNullOrWhiteSpace(userDisplayName) ? "Kampüs Öğrencisi" : userDisplayName.Trim();
+        try
+        {
+            if (db.Database.IsNpgsql())
+            {
+                await db.Database.ExecuteSqlInterpolatedAsync($"""
+                    INSERT INTO "Profiller" ("Id", "AdSoyad", "Rol", "OlusturulmaTarihi")
+                    VALUES ({userId}, {safeName}, {role}, {_clock.GetUtcNow()})
+                    ON CONFLICT ("Id") DO NOTHING
+                """, ct);
+            }
+            else
+            {
+                db.Profiller.Add(new Profil
+                {
+                    Id = userId,
+                    AdSoyad = safeName,
+                    Rol = role,
+                    OlusturulmaTarihi = _clock.GetUtcNow()
+                });
+                await db.SaveChangesAsync(ct);
+            }
+        }
+        catch (Exception pEx)
+        {
+            logger.LogWarning(pEx, "Profil otomatik oluşturulurken hata oluştu.");
         }
     }
 
