@@ -177,7 +177,13 @@
                         <p class="text-muted small mb-3 text-truncate-2" style="min-height: 2.4rem;">@item.Aciklama</p>
 
                         <div class="small text-muted mb-3">
-                            <div class="mb-1"><i class="bi bi-geo-alt me-1 text-danger"></i> <span class="fw-medium text-dark">@item.Yer</span></div>
+                            <div class="mb-1 d-flex align-items-baseline flex-wrap gap-2">
+                                <span class="fw-medium text-dark"><i class="bi bi-geo-alt me-1 text-danger" aria-hidden="true"></i>@item.Yer</span>
+                                @if (item.HaritaUrl is string haritaUrl)
+                                {
+                                    <a href="@haritaUrl" target="_blank" rel="noopener noreferrer" class="link-primary">Haritada gör</a>
+                                }
+                            </div>
                             @if (item.Tur == "Sosyal" && item.BulusmaTarihi.HasValue)
                             {
                                 <div class="mb-1"><i class="bi bi-clock me-1 text-primary"></i> <span class="text-primary fw-medium">Buluşma: @item.BulusmaTarihi.Value.ToString("dd.MM.yyyy HH:mm")</span></div>

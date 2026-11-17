@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using FixCampus.Web.Services;
 
 namespace FixCampus.Web.Contracts;
 
@@ -63,6 +64,7 @@ public sealed record ListingSummaryResponse(
 )
 {
     public int KatilimciSayisi => KatilimSayisi;
+    public string? HaritaUrl => ListingMapLink.SearchUrl(Yer);
 }
 
 public sealed record ListingDetailResponse(

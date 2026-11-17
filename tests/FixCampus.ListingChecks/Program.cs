@@ -28,6 +28,21 @@ var categoryLostId = Guid.Parse("22222222-2222-4222-8222-222222222222");
 var futureDate = now.AddHours(2);
 var pastDate = now.AddHours(-2);
 
+const string mapPlace = "  Merkez Kütüphane & A Blok  ";
+const string expectedMap = "https://www.google.com/maps/search/?api=1&query=Merkez%20K%C3%BCt%C3%BCphane%20%26%20A%20Blok";
+var mapApiListing = new ListingResponse(Guid.Empty, Guid.Empty, validCategoryId, "Genel",
+    "Harita testi", "Harita bağlantısı", "Sosyal", mapPlace, futureDate, "Aktif", now);
+var mapWebListing = new ListingSummaryResponse(Guid.Empty, Guid.Empty, "Öğrenci", validCategoryId, "Genel",
+    "Harita testi", "Harita bağlantısı", "Sosyal", mapPlace, futureDate, "Aktif", now, 0, null);
+Require(mapApiListing.HaritaUrl == expectedMap && mapWebListing.HaritaUrl == expectedMap,
+    "Web ve mobil API aynı kodlanmış harita adresini üretmelidir.");
+using var mapResponseJson = System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(
+    mapApiListing, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)));
+Require(mapResponseJson.RootElement.GetProperty("haritaUrl").GetString() == expectedMap,
+    "Mobil API yanıtında haritaUrl alanı olmalıdır.");
+Require((mapApiListing with { Yer = " " }).HaritaUrl is null &&
+    (mapWebListing with { Yer = "" }).HaritaUrl is null, "Boş yer bilgisi için harita bağlantısı üretilmemelidir.");
+
 // =========================================================================
 // 1. IlanlarController Yetkilendirme Kontrolü ([Authorize], AllowAnonymous Yok)
 // =========================================================================

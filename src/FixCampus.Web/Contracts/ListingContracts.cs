@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using FixCampus.Web.Services;
 
 namespace FixCampus.Web.Contracts;
 
@@ -38,7 +39,10 @@ public sealed class SaveListingRequest : IValidatableObject
 
 public sealed record ListingResponse(Guid Id, Guid SahipId, Guid KategoriId, string Kategori,
     string Baslik, string Aciklama, string Tur, string Yer, DateTimeOffset? BulusmaTarihi,
-    string Durum, DateTimeOffset OlusturulmaTarihi, int KatilimciSayisi = 0, bool Katiliyor = false);
+    string Durum, DateTimeOffset OlusturulmaTarihi, int KatilimciSayisi = 0, bool Katiliyor = false)
+{
+    public string? HaritaUrl => ListingMapLink.SearchUrl(Yer);
+}
 
 public sealed record ParticipantResponse(string AdSoyad, string? Bolum, string? Sinif);
 
