@@ -79,10 +79,10 @@ try
     foreach (var (path, method) in new[] { ("/api/ilanlar", "get"), ("/api/ilanlar", "post"),
         ("/api/ilanlar/{id}", "get"), ("/api/ilanlar/{id}", "put"), ("/api/ilanlar/{id}", "delete"),
         ("/api/ilanlar/{id}/katilim", "put"), ("/api/ilanlar/{id}/katilim", "delete"),
-        ("/api/kategoriler", "get") })
+        ("/api/ilanlar/{id}/katilimcilar", "get"), ("/api/kategoriler", "get") })
         Require(openapi.GetProperty("paths").GetProperty(path).GetProperty(method)
             .GetProperty("security")[0].TryGetProperty("Bearer", out _), "Swagger Bearer şeması eksik.");
-    Console.WriteLine("PASS: çalışan Swagger/OpenAPI ve sekiz korunan işlem.");
+    Console.WriteLine("PASS: çalışan Swagger/OpenAPI ve dokuz korunan işlem.");
     var first = await Login(1); firstToken = first.Token;
     var second = await Login(2); secondToken = second.Token;
     Require(first.Id != second.Id, "İki farklı hesap girilmelidir.");
@@ -125,20 +125,40 @@ try
         var participation = path + "/katilim";
         if (type == "Sosyal")
         {
+            var participantPath = path + "/katilimcilar";
+            await Send(HttpMethod.Get, participantPath, HttpStatusCode.Unauthorized);
+            await Send(HttpMethod.Get, participantPath, HttpStatusCode.Forbidden, secondToken);
+            var initiallyEmpty = await Send(HttpMethod.Get, participantPath, HttpStatusCode.OK, firstToken);
+            Require(initiallyEmpty.GetArrayLength() == 0, "Yeni buluşmanın katılımcı listesi boş olmalıdır.");
             await Send(HttpMethod.Put, participation, HttpStatusCode.Unauthorized);
             for (var attempt = 0; attempt < 2; attempt++)
                 RequireParticipation(await Send(HttpMethod.Put, participation, HttpStatusCode.OK, secondToken), 1, true);
 
+            var participantProfile = await Send(HttpMethod.Get, "/api/profil", HttpStatusCode.OK, secondToken);
+            var participants = await Send(HttpMethod.Get, participantPath, HttpStatusCode.OK, firstToken);
+            Require(participants.GetArrayLength() == 1 &&
+                participants[0].GetProperty("adSoyad").GetString() == participantProfile.GetProperty("adSoyad").GetString(),
+                "Katılan ikinci hesabın adı listede bulunmalıdır.");
+            foreach (var field in new[] { "bolum", "sinif" })
+                Require(participants[0].GetProperty(field).ToString() == participantProfile.GetProperty(field).ToString(),
+                    "Katılımcının akademik bilgileri profil ile aynı olmalıdır.");
+            Require(participants[0].EnumerateObject().Select(field => field.Name).ToHashSet()
+                .SetEquals(new[] { "adSoyad", "bolum", "sinif" }),
+                "Katılımcı listesi yalnızca ad ve akademik bilgileri içermelidir.");
+            await Send(HttpMethod.Get, participantPath, HttpStatusCode.Forbidden, secondToken);
             RequireParticipation(await Send(HttpMethod.Get, path, HttpStatusCode.OK, firstToken), 1, false);
             RequireParticipation(await Send(HttpMethod.Delete, participation, HttpStatusCode.OK, firstToken), 1, false);
             for (var attempt = 0; attempt < 2; attempt++)
                 RequireParticipation(await Send(HttpMethod.Delete, participation, HttpStatusCode.OK, secondToken), 0, false);
             RequireParticipation(await Send(HttpMethod.Get, path, HttpStatusCode.OK, secondToken), 0, false);
-            Console.WriteLine("PASS: gerçek oturumlarla katılma, çift katılım engeli, hesap ayrımı ve geri alma.");
+            var afterLeaving = await Send(HttpMethod.Get, participantPath, HttpStatusCode.OK, firstToken);
+            Require(afterLeaving.GetArrayLength() == 0, "Katılım geri alınınca katılımcı listesi boşalmalıdır.");
+            Console.WriteLine("PASS: katılma, hesap ayrımı, sahip için katılımcı listesi, 401/403 ve geri alma.");
         }
         else
         {
             await Send(HttpMethod.Put, participation, HttpStatusCode.Conflict, secondToken);
+            await Send(HttpMethod.Get, path + "/katilimcilar", HttpStatusCode.NotFound, firstToken);
         }
         await Send(HttpMethod.Delete, path, HttpStatusCode.NoContent, firstToken);
         createdIds.Remove(id);
@@ -157,6 +177,7 @@ try
     await Send(HttpMethod.Get, missing, HttpStatusCode.NotFound, firstToken);
     await Send(HttpMethod.Put, missing, HttpStatusCode.NotFound, firstToken, Body("Kayip"));
     await Send(HttpMethod.Delete, missing, HttpStatusCode.NotFound, firstToken);
+    await Send(HttpMethod.Get, missing + "/katilimcilar", HttpStatusCode.NotFound, firstToken);
     Console.WriteLine($"PASS: {checks} canlı HTTP isteği; Swagger, Auth, üç tür CRUD, sahiplik, 400/401/403/404 ve temizlik.");
 }
 finally

@@ -206,3 +206,18 @@ fixCampus platformunda ilan keşif deneyimi ve kişisel ilan yönetimi tamamlanm
 dotnet run --project tests/FixCampus.ListingChecks
 ```
 
+## Mobil geri bildirimleri ve canlı katılımcı kontrolü
+
+Flutter Radar, ortak API'nin katılım ve katılımcı listesi uçlarını kullanır.
+Katılımcı listesini yalnızca ilan sahibi okuyabilir. FixCampus.LiveChecks,
+GET /api/ilanlar/{id}/katilimcilar için OpenAPI/Bearer, 401/403, liste içeriği,
+katılımın geri alınması ve 404 senaryolarını da doğrular.
+
+İki mevcut öğrenci test hesabıyla yerel API üzerinde çalıştırma:
+
+```sh
+dotnet run --project tests/FixCampus.LiveChecks -- http://127.0.0.1:5168
+```
+
+[Android canlı test gözlemleri ve geri bildirim düzeltmeleri](docs/hafta-05-android-canli-test.md)
+iki depoda birlikte tutulur. Türkçe karakterlerin klavyeden girilmesi cihazda yeniden kontrol edilmelidir.
